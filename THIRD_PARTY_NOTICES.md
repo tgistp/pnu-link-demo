@@ -1,0 +1,45 @@
+# 사진 비교 구현 참고 자료
+
+## Streamlit Cropper
+
+- https://github.com/turner-anderson/streamlit-cropper
+- streamlit-cropper 0.3.1, MIT.
+- 아래 MIT 이용 조건은 이 구성요소에도 적용한다.
+- 해당 패키지 LICENSE의 저작권 표기는 Copyright (c) 2018 The Python Packaging Authority이다.
+
+## Same
+
+- 저장소 https://github.com/Ps23102004/same
+- 검토 파일 backend/app/retrieval/verify.py
+- 참고한 구조는 SIFT 대응점 검색, 비율 검사, RANSAC으로 일관된 대응점 확인이다.
+- 이 프로젝트는 이를 정규화 좌표, 상호 대응 검사, 고정 크기 특징 저장에 맞게 재구현했다.
+- 원본 저장소의 성능 수치를 이 앱의 성능으로 사용하지 않는다.
+
+MIT License
+
+Copyright (c) 2026 Parth Singh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## DINO / DINOv2
+
+- https://github.com/facebookresearch/dino/blob/main/eval_image_retrieval.py
+- https://github.com/facebookresearch/dinov2
+- Apache-2.0. DINOv2 모델 파일과 기존 라이선스는 models 디렉터리에서 관리한다.
+- 전체 특징과 부분 특징을 통한 검색 구조를 검토했다. 추가 모델 학습을 수행한 것은 아니다.
