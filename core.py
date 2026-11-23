@@ -87,7 +87,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS app_metadata (key TEXT PRIMARY KEY,value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY, message TEXT NOT NULL, created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS favorites (
+            owner_hash TEXT NOT NULL REFERENCES owners(code_hash),
+            item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL, PRIMARY KEY(owner_hash,item_id));
+        CREATE TABLE IF NOT EXISTS report_views (
+            report_id INTEGER PRIMARY KEY REFERENCES reports(id) ON DELETE CASCADE,
+            last_item_id INTEGER NOT NULL);
         """)
+        # 기존 신고에는 현재 목록을 기준점으로 잡아 과거 물건을 새 알림으로 만들지 않습니다.
+        con.execute("INSERT OR IGNORE INTO report_views SELECT id,(SELECT COALESCE(MAX(id),0) FROM items) FROM reports")
         con.execute("INSERT OR IGNORE INTO owners SELECT DISTINCT code_hash, ? FROM registrations", (now().isoformat(),))
         con.commit()
         # 기존 버전의 좌표 필수 제약만 해제합니다. 등록물과 반환 요청은 유지합니다.
@@ -300,6 +309,7 @@ def insert(table, values, owner_session=None, *, photo_paths=None):
                                 [(item_id, index, path) for index, path in enumerate(photo_paths)])
         else:
             con.execute("INSERT INTO report_owners (report_id,owner_hash) VALUES (?,?)", (item_id, owner_hash))
+            con.execute("INSERT INTO report_views VALUES (?,(SELECT COALESCE(MAX(id),0) FROM items))", (item_id,))
         sec.event(con, now(), "create_" + table, item_id)
         return item_id
 
@@ -424,6 +434,53 @@ def delete_report(report_id, token):
         con.execute("DELETE FROM report_owners WHERE report_id=? AND owner_hash=?", (report_id, owner_hash))
         con.execute("DELETE FROM reports WHERE id=?", (report_id,))
         sec.event(con, now(), "delete_report", report_id)
+
+
+def favorite_ids(token):
+    """관심 목록은 현재 확인 코드 소유자에게만 조회합니다."""
+    with connect() as con:
+        owner = require_session(con, token)
+        return {row[0] for row in con.execute("SELECT item_id FROM favorites WHERE owner_hash=?", (owner,))}
+
+
+def set_favorite(item_id, token, saved):
+    if type(saved) is not bool:
+        raise sec.SecurityError("저장 여부를 확인해 주세요.")
+    item_id = sec.positive_id(item_id)
+    with connect() as con:
+        con.execute("BEGIN IMMEDIATE")
+        owner = require_session(con, token)
+        if not con.execute("SELECT 1 FROM items WHERE id=?", (item_id,)).fetchone():
+            raise sec.SecurityError("물건을 찾을 수 없습니다.")
+        if saved:
+            existing = con.execute("SELECT 1 FROM favorites WHERE owner_hash=? AND item_id=?", (owner,item_id)).fetchone()
+            count = con.execute("SELECT COUNT(*) FROM favorites WHERE owner_hash=?", (owner,)).fetchone()[0]
+            if not existing and count >= 100:
+                raise sec.SecurityError("관심 물건은 최대 100개까지 저장할 수 있습니다.")
+            con.execute("INSERT OR IGNORE INTO favorites VALUES (?,?,?)", (owner,item_id,now().isoformat()))
+        else:
+            con.execute("DELETE FROM favorites WHERE owner_hash=? AND item_id=?", (owner,item_id))
+
+
+def report_updates(token):
+    """마지막 조회 이후 등록된 기본 조건 후보 수만 계산하며 AI 판정으로 표현하지 않습니다."""
+    with connect() as con:
+        owner = require_session(con, token)
+        return pd.read_sql_query("""SELECT r.id,r.title,COUNT(i.id) AS new_count FROM reports r
+            JOIN report_owners o ON o.report_id=r.id JOIN report_views v ON v.report_id=r.id
+            JOIN items i ON i.id>v.last_item_id AND i.category=r.category
+                AND i.found_at>=r.start_at AND i.status!='반환 완료'
+            WHERE o.owner_hash=? GROUP BY r.id,r.title ORDER BY r.id DESC""", con, params=[owner])
+
+
+def mark_report_viewed(report_id, token, seen_item_id=None):
+    with connect() as con:
+        owner = require_session(con, token)
+        if not con.execute("SELECT 1 FROM report_owners WHERE report_id=? AND owner_hash=?", (report_id,owner)).fetchone():
+            raise sec.SecurityError("본인의 분실 신고만 확인할 수 있습니다.")
+        latest = con.execute("SELECT COALESCE(MAX(id),0) FROM items").fetchone()[0]
+        cursor = latest if seen_item_id is None else min(max(0,int(seen_item_id)),latest)
+        con.execute("UPDATE report_views SET last_item_id=MAX(last_item_id,?) WHERE report_id=?", (cursor,report_id))
 
 
 def mark_collected(item_id, note=""):

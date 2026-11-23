@@ -87,11 +87,12 @@ def photo_inputs(prefix, label):
         representative = st.session_state[prefix + "_representative"]
         for index, (column, image) in enumerate(zip(columns, images)):
             with column:
-                st.image(image, width="stretch")
+                st.image(image, width=140)
                 st.caption(f"사진 {index + 1}" + (" · 대표" if index == representative else "") +
                            (" · 영역 선택됨" if hashes[index] in boxes else ""))
         with st.expander("대표 사진·물건 영역 선택"):
-            selected = st.segmented_control("영역을 지정할 사진", list(range(len(images))), default=0,
+            st.session_state.setdefault(prefix + "_selected", 0)
+            selected = st.segmented_control("영역을 지정할 사진", list(range(len(images))),
                 format_func=lambda index: f"사진 {index + 1}", key=prefix + "_selected")
             selected = 0 if selected is None else selected
             image = images[selected]

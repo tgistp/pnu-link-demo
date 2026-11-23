@@ -2,6 +2,9 @@ import html
 import json
 import secrets
 import sqlite3
+import os
+import io
+import base64
 from datetime import datetime, time, timedelta
 
 import folium
@@ -13,6 +16,7 @@ from streamlit_folium import st_folium
 import core
 import security as sec
 from photo_editor import photo_inputs, prepare_upload, save_photos, remove_photos
+from recommendation_summary import reasons, photo_comparison_notice
 
 st.set_page_config(page_title="PNU:LINK", layout="wide", initial_sidebar_state="collapsed")
 try:
@@ -22,18 +26,19 @@ except Exception:
     st.stop()
 PLACES = core.places()
 st.session_state.setdefault("actor_id", secrets.token_urlsafe(24))
-PAGES = ["처음", "분실물 찾기", "습득물 등록", "분실 신고 · 추천", "등록 내역"]
+PAGES = ["처음", "분실물 찾기", "습득물 등록", "분실 신고 · 추천", "등록 내역", "물건 상세", "등록 완료"]
 LABELS = dict(zip(PAGES, ["처음", "물건 찾기", "주운 물건 등록", "분실 신고", "내 등록·인증 내역"]))
+DEMO_MODE = os.getenv("CAMPUS_DEMO_MODE") == "1" or st.session_state.get("demo_mode", False)
 if st.session_state.get("page") not in PAGES:
     st.session_state["page"] = "처음"
 
 st.markdown("""<style>
 .block-container{max-width:1140px;padding-top:3.7rem}
 h1{font-size:1.7rem!important;letter-spacing:-.04em}h2{font-size:1.25rem!important}h3{font-size:1.05rem!important}
-.st-key-page{border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent);padding-bottom:.4rem;margin-bottom:1rem}
-.st-key-page [role='radiogroup']{gap:1.4rem}.st-key-page [data-baseweb='radio']>div:first-child,.st-key-page [data-testid='stRadioOption']>div>div:first-child{display:none}
-.st-key-page label{padding:.4rem .1rem;border-bottom:2px solid transparent}.st-key-page label:has(input:checked){border-color:#1ed760;font-weight:700}
-.st-key-page label:focus-within{outline:2px solid #1ed760;outline-offset:3px}
+.st-key-main_menu{border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent);padding-bottom:.4rem;margin-bottom:1rem}
+.st-key-main_menu [role='radiogroup']{gap:1.4rem}.st-key-main_menu [data-baseweb='radio']>div:first-child,.st-key-main_menu [data-testid='stRadioOption']>div>div:first-child{display:none}
+.st-key-main_menu label{padding:.4rem .1rem;border-bottom:2px solid transparent}.st-key-main_menu label:has(input:checked){border-color:#1ed760;font-weight:700}
+.st-key-main_menu label:has(input:focus-visible){outline:2px solid #1ed760;outline-offset:3px}
 button[kind='primary']{background:#1ed760!important;border-color:#1ed760!important;color:#06170c!important;border-radius:5px!important}
 button[kind='primary']:hover{background:#3ee67b!important}
 [class*='st-key-item_']{border:1px solid color-mix(in srgb,currentColor 13%,transparent);background:color-mix(in srgb,currentColor 3%,transparent);padding:1rem;border-radius:7px}
@@ -46,6 +51,24 @@ button[kind='primary']:hover{background:#3ee67b!important}
 .processing-history li:before{content:"";width:9px;height:9px;background:#1ed760;border-radius:50%;position:absolute;left:-5px;top:6px}
 .processing-history strong{display:block;font-weight:600}
 .processing-history small{display:block;opacity:.7;margin-top:.25rem}
+.block-container{max-width:1180px}
+button[kind='primary']{border-radius:8px!important}
+[class*='st-key-catalog_card_']{border:1px solid #343b38;border-radius:16px;padding:14px;background:linear-gradient(145deg,#242a27,#202422);margin-bottom:20px;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+[class*='st-key-catalog_card_']:hover,[class*='st-key-catalog_card_']:focus-within{transform:translateY(-3px);border-color:#597c66;box-shadow:0 12px 28px #0003}
+[class*='st-key-catalog_card_'] [data-testid='stImage']{overflow:hidden;border-radius:10px;background:#e9e9e5;width:100%!important;max-width:none!important}
+[class*='st-key-catalog_card_'] [data-testid='stImage'] img{height:200px!important;width:100%!important;object-fit:contain;transition:transform .2s ease}
+[class*='st-key-catalog_card_']:hover [data-testid='stImage'] img{transform:scale(1.025)}
+.catalog-title{font-size:1.06rem;font-weight:650;line-height:1.45;min-height:3.1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:.25rem}
+.catalog-visual{height:200px;width:100%;border-radius:10px;overflow:hidden;background:#e9e9e5}
+.catalog-visual img{display:block;width:100%;height:100%;object-fit:contain;transition:transform .2s ease}
+[class*='st-key-catalog_card_']:hover .catalog-visual img{transform:scale(1.025)}
+.catalog-photo-empty,.detail-photo-empty{display:flex;align-items:center;justify-content:center;color:#a8b8ae;background:#29332d;border-radius:10px;height:200px}
+.detail-photo-empty{height:340px}
+.st-key-pickup_panel{border-radius:14px!important;background:#212923;border-color:#394e40!important;margin-top:1.5rem}
+.completion-mark{width:58px;height:58px;border-radius:50%;background:#1ed76022;color:#1ed760;display:flex;align-items:center;justify-content:center;font-size:30px;margin:1rem 0}
+.st-key-activity_strip{background:#223329;border:1px solid #365440;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem}
+@media(max-width:640px){.block-container{padding-top:2rem;padding-left:1rem;padding-right:1rem}.st-key-main_menu [role='radiogroup']{gap:.8rem}[class*='st-key-catalog_card_'] [data-testid='stImage'] img{height:220px!important}.catalog-title{min-height:0}}
+@media(prefers-reduced-motion:reduce){[class*='st-key-catalog_card_'],[class*='st-key-catalog_card_'] img{transition:none!important;transform:none!important}}
 </style>""", unsafe_allow_html=True)
 
 if st.session_state["page"] == "처음":
@@ -96,7 +119,7 @@ def ensure_owner(role="recipient"):
         st.session_state["owner_session"] = token
         st.session_state["issued_code"] = code
     adopt_current_role(token,role)
-    if st.session_state["demo_active_role"]!=role:
+    if DEMO_MODE and st.session_state["demo_active_role"]!=role:
         change_demo_role(role,navigate=False)
     return st.session_state["owner_session"]
 
@@ -144,6 +167,18 @@ def role_action(role, item_id=None):
     guard(change_demo_role, role, item_id)
 
 
+def go_page(target):
+    if st.session_state.get("page")=="분실물 찾기":
+        keys=[*SEARCH_DEFAULTS,*(f"search_{i}" for i in range(6)),"searchradius","search_stops",
+              "search_startdate","search_enddate"]
+        st.session_state["saved_search_filters"]={key:st.session_state[key] for key in keys if key in st.session_state}
+        st.session_state["restore_search_filters"]=True
+    if target=="등록 내역" and st.session_state.get("page")=="물건 상세":
+        if st.session_state.get("detail_return_kind"):
+            st.session_state["record_kind"]=st.session_state["detail_return_kind"]
+    st.session_state["page"] = target
+
+
 def clear_demo_roles():
     for key in list(st.session_state):
         if key.startswith("demo_"):
@@ -152,13 +187,32 @@ def clear_demo_roles():
 
 st.markdown('<h1 class="app-brand">PNU<span>:</span>LINK</h1>',unsafe_allow_html=True)
 st.caption("부산대학교 양산캠퍼스 분실물")
-page = st.radio("메뉴", PAGES, format_func=LABELS.get, horizontal=True, label_visibility="collapsed", key="page")
+def navigate():
+    go_page({"물건 찾기": "분실물 찾기", "등록하기": "분실 신고 · 추천",
+             "내 내역": "등록 내역"}[st.session_state["main_menu"]])
+
+st.session_state["main_menu"] = ("물건 찾기" if st.session_state["page"] in ("분실물 찾기","물건 상세") else
+                                 "내 내역" if st.session_state["page"] == "등록 내역" else "등록하기")
+nav, home = st.columns([8, 1])
+with nav:
+    st.radio("메뉴", ["물건 찾기", "등록하기", "내 내역"], horizontal=True,
+             label_visibility="collapsed", key="main_menu", on_change=navigate)
+if home.button("처음", key="go_home"):
+    st.session_state["page"] = "처음"
+    st.rerun()
+if st.session_state["page"] in ("습득물 등록", "분실 신고 · 추천"):
+    def choose_registration():
+        st.session_state["page"] = "습득물 등록" if st.session_state["registration_kind"] == "주웠어요" else "분실 신고 · 추천"
+    st.session_state["registration_kind"] = "주웠어요" if st.session_state["page"] == "습득물 등록" else "잃어버렸어요"
+    st.segmented_control("등록 종류", ["잃어버렸어요", "주웠어요"], key="registration_kind",
+                         on_change=choose_registration)
+page = st.session_state["page"]
 if page == "처음":
     st.rerun()
 if st.session_state.get("owner_session") and not st.session_state.get("demo_active_role"):
     try:adopt_current_role(st.session_state["owner_session"])
     except sec.SecurityError:pass
-if st.session_state.get("owner_session"):
+if DEMO_MODE and st.session_state.get("owner_session"):
     with st.expander("연결·시연 역할"):
         a, b, c = st.columns([2, 1, 1])
         active = st.session_state.get("demo_active_role")
@@ -194,8 +248,10 @@ def show_pickup_status(record, key):
     if expired:
         st.warning("수령 인증 시간이 만료됐습니다. 답변을 다시 확인해 주세요.")
         return False
+    st.caption("① 질문 답변 → ② 확인 결과·수령 위치 → ③ 실제 수령 완료")
     if pd.notna(record.verification_score):
-        st.caption(f"로컬 AI 의미 유사도 {record.verification_score*100:.1f} / 100 · 통과 기준 {THRESHOLD*100:.0f} (소유 확률 아님)")
+        with st.expander("답변 확인 상세"):
+            st.caption(f"답변 의미 유사도 {record.verification_score*100:.1f} / 100 · 기준 {THRESHOLD*100:.0f} (소유 확률 아님)")
     if record.status == "소유 확인 완료" and pd.notna(record.storage):
         st.success("특징 확인 완료 · 아직 수령 전입니다.")
         st.markdown("**수령 위치**")
@@ -205,10 +261,12 @@ def show_pickup_status(record, key):
         if not known and st.session_state.get("recent_pickup_request") == record.id:
             known = st.session_state.get("issued_otp")
         if known:
-            with st.expander("수령 인증번호", expanded=st.session_state.get("renewed_pickup_id")==int(record.id)):
+            with st.expander("현장에서 보여줄 수령번호", expanded=st.session_state.get("renewed_pickup_id")==int(record.id)):
                 st.code(known, language=None)
-        st.caption("번호를 잊었거나 5회 잘못 입력했다면 다시 받으세요. 이전 번호는 사용할 수 없고 유효시간은 늘어나지 않습니다.")
-        if st.button("수령번호 다시 받기",key=key+"_renew_otp"):
+        with st.expander("수령번호를 잊었어요"):
+            st.caption("다시 받으면 이전 번호는 사용할 수 없습니다. 유효시간은 늘어나지 않습니다.")
+            renew = st.button("수령번호 다시 받기",key=key+"_renew_otp")
+        if renew:
             ok,new_otp=guard(core.renew_pickup_otp,int(record.id),st.session_state.get("owner_session"))
             if ok:
                 st.session_state.setdefault("pickup_codes",{})[str(record.id)]=new_otp
@@ -254,6 +312,8 @@ def show_timeline(item_id, token, key):
 @st.fragment(run_every="10s")
 def notifications():
     """현재 계정에서 확인할 등록·반환 관련 알림을 표시합니다."""
+    if st.session_state["page"] != page:
+        st.rerun(scope="app")
     token = st.session_state.get("owner_session")
     if token:
         try:
@@ -265,6 +325,11 @@ def notifications():
                 st.success(f"등록한 물건 {len(unread)}건이 반환 완료됐습니다. 내 등록·인증 내역에서 확인하세요.")
             if len(pending):
                 st.info(f"소유 확인을 기다리는 건이 {len(pending)}건 있습니다. 내 등록·인증 내역에서 검토하세요.")
+            updates = core.report_updates(token)
+            if not updates.empty:
+                with st.container(horizontal=True, key="activity_strip"):
+                    st.write(f"내 분실 신고 {len(updates)}건에 새 습득물이 있습니다.")
+                    st.button("내역에서 확인",key="open_updates",on_click=go_page,args=("등록 내역",))
         except sec.SecurityError:
             st.caption("내역 연결이 만료됐습니다. 확인 코드로 다시 연결해 주세요.")
 
@@ -347,10 +412,10 @@ def display_scores(result, key):
     if ok and plots:
         total_tab, parts_tab = st.tabs(["추천 점수 비교", "항목별 점수"])
         with total_tab:
-            st.image(plots[0], use_container_width=True)
+            st.image(plots[0], width="stretch")
             st.download_button("점수 그래프 PNG 저장", plots[0], "matching-scores.png", "image/png", key=key+"_png")
         with parts_tab:
-            st.image(plots[1], use_container_width=True)
+            st.image(plots[1], width="stretch")
         columns = ["id", "title", *parts, total_column]
         table = result[columns].rename(columns={"id": "번호", "title": "물건", **parts, total_column: "총점"})
         if "distance_m" in result:
@@ -361,99 +426,260 @@ def display_scores(result, key):
             st.download_button("항목별 점수 CSV 저장", sec.safe_csv(table), "matching-scores.csv", "text/csv", key=key+"_csv")
 
 
-def cards(results, prefix="search"):
-    """습득물 목록을 페이지로 나누고 각 카드에서 수령 인증으로 연결합니다."""
-    if results.empty:
-        st.info("조건에 맞는 물건이 없습니다.")
+@st.cache_data(ttl=120, max_entries=32, show_spinner=False)
+def rank_report(results, embedding, color, revision, data_directory):
+    """같은 신고·등록 목록은 재사용하고 목록이나 저장소가 바뀌면 다시 비교합니다."""
+    from photo_match import MAX_CANDIDATES, rerank
+    return rerank(results, embedding, data_directory, report_color=color,
+                  image_lookup=core.matching_photo_sets(results.head(MAX_CANDIDATES).id))
+
+
+def open_item(item_id, origin=None, recommendation=None):
+    st.session_state["detail_return_page"] = origin or st.session_state["page"]
+    st.session_state["detail_return_kind"] = st.session_state.get("record_kind") if st.session_state["page"]=="등록 내역" else None
+    st.session_state["detail_item"] = int(item_id)
+    st.session_state["detail_recommendation"] = recommendation
+    go_page("물건 상세")
+
+
+def save_interest(item_id, saved):
+    def save():
+        return core.set_favorite(int(item_id), ensure_owner(), saved)
+    ok, _ = guard(save)
+    if ok:
+        st.toast("관심 물건에 저장했습니다. 내 내역에서 다시 볼 수 있습니다." if saved else "관심 물건에서 해제했습니다.")
+
+
+def pickup_panel(row, record, own_ids, prefix="detail"):
+    """수령 인증은 상세 화면 한 곳에서만 진행하며 기존 권한 검사를 유지합니다."""
+    if int(row.id) in own_ids:
+        st.info("내가 등록한 물건입니다. 수령 요청은 내 내역에서 확인할 수 있습니다.")
+        if DEMO_MODE:
+            st.button("분실자 역할로 전환",key=f"switch_recipient_{row.id}",type="primary",on_click=role_action,args=("recipient",int(row.id)))
         return
-    requests = {}
-    own_ids = set()
+    if record and show_pickup_status(record,f"{prefix}_{row.id}"):
+        return
+    st.markdown("**물건 확인 질문**")
+    st.caption("① 질문에 답하기 → ② 확인 후 수령 위치 안내 → ③ 물건을 받은 뒤 완료")
+    st.text(row.verification_question or "공개 사진에 보이지 않는 특징 한 가지를 알려주세요.")
+    if not row.verification_question or getattr(row, "manual_verification", False):
+        st.caption("답변을 접수하면 등록자가 확인합니다. 승인 후 이 물건 아래에 수령 위치가 표시됩니다.")
+    else:
+        st.caption("답변의 의미를 비교합니다. 확인되면 이 물건 아래에 수령 위치가 표시됩니다.")
+    with st.form(f"proof_{row.id}"):
+        evidence=st.text_input("질문에 대한 답변",max_chars=1000,key=f"answer_{row.id}",type="password")
+        note=st.text_input("등록자에게 남길 말 (선택)",max_chars=500)
+        submit=st.form_submit_button("답변 확인 · 수령 위치 보기",type="primary")
+    if submit:
+        def request():return core.request_pickup(int(row.id),ensure_owner(),evidence,note)
+        with st.spinner("로컬 AI가 답변 의미를 비교하고 있습니다…"):
+            ok,result=guard(request)
+        if ok:
+            st.session_state["issued_otp"]=result[1]
+            st.session_state["recent_pickup_request"]=int(result[0])
+            st.session_state.setdefault("pickup_codes",{})[str(result[0])]=result[1]
+            st.rerun()
+    st.button("목록으로 돌아가기",key=f"cancel_{row.id}",on_click=go_page,
+              args=(st.session_state.get("detail_return_page","분실물 찾기"),))
+
+
+def item_detail():
+    """최신 공개 상태를 다시 조회하여 사진·발견 정보·수령 절차를 한 화면에 표시합니다."""
+    back = st.session_state.get("detail_return_page", "분실물 찾기")
+    st.button("← 목록으로", on_click=go_page, args=(back,), key="detail_back")
+    item_id = st.session_state.get("detail_item")
+    public = core.read("items")
+    selected = public.loc[public.id.eq(item_id)]
+    if selected.empty:
+        st.info("이 물건을 찾을 수 없습니다. 목록에서 다른 물건을 확인해 주세요.")
+        return
+    row = next(selected.itertuples())
     token = st.session_state.get("owner_session")
+    own_ids, saved, record = set(), set(), None
     if token:
-        try:
-            sent = core.pickup_requests(token, received=False)
-            requests = {int(r.item_id): r for r in sent.drop_duplicates("item_id", keep="first").itertuples()}
+        ok, saved_ids = guard(core.favorite_ids, token)
+        if ok:
+            saved = saved_ids
             own_ids = set(core.owner_items(token).id.tolist())
+            requests = core.pickup_requests(token, received=False)
+            requests = requests.loc[requests.item_id.eq(item_id)]
+            if not requests.empty:
+                record = next(requests.itertuples())
+    left, right = st.columns([1.15,1], gap="large")
+    with left:
+        photos = core.public_photos(int(row.id))
+        if photos:
+            position = 0
+            if len(photos)>1:
+                position = st.segmented_control("물건 사진", list(range(len(photos))), default=0,
+                    format_func=lambda index:f"사진 {index+1}", key=f"detail_photo_{item_id}") or 0
+            path = sec.image_path(core.DATA, photos[position])
+            if path:
+                st.image(str(path), width="stretch")
+                st.caption(f"{position+1} / {len(photos)} · 사진을 확대해서 작은 특징도 확인하세요.")
+        else:
+            label = "사진 비공개" if not row.image_public else "등록된 사진이 없습니다"
+            st.markdown(f'<div class="detail-photo-empty">{label}</div>',unsafe_allow_html=True)
+    with right:
+        st.caption(f"{row.category} · {row.color} · #{row.id}")
+        st.subheader(row.title)
+        st.caption("반환 완료" if row.status == "반환 완료" else "보관 중")
+        st.markdown("**물건의 특징**")
+        st.text(row.description)
+        recommendation = st.session_state.get("detail_recommendation")
+        if recommendation:
+            st.markdown(f"**추천 점수 {recommendation['score']:.1f} / {recommendation['maximum']}점**")
+            st.caption(recommendation["reasons"])
+        st.markdown("**발견 정보**")
+        st.text(row.place if row.place != "없음" else "발견 장소 미등록")
+        st.caption(pd.Timestamp(row.found_at).strftime("%Y.%m.%d %H:%M"))
+        st.button("관심 저장됨" if row.id in saved else "관심 물건 저장", key="detail_favorite",
+                  on_click=save_interest, args=(int(row.id), row.id not in saved), width="stretch")
+        st.caption("보관 장소는 소유 확인이 끝난 뒤 안내합니다.")
+    if pd.notna(row.lat) and pd.notna(row.lon):
+        with st.expander("발견 위치 지도"):
+            draw_map(selected, [], 100)
+    if token and (int(row.id) in own_ids or record is not None):
+        show_timeline(int(row.id), token, f"detail_{row.id}")
+    with st.container(border=True, key="pickup_panel"):
+        if row.status == "반환 완료":
+            st.success("반환이 완료된 물건입니다.")
+        else:
+            st.subheader("내 물건이 맞나요?")
+            pickup_panel(row, record, own_ids)
+    show_access_code("detail")
+
+
+@st.cache_data(max_entries=128,show_spinner=False)
+def catalog_thumbnail(path,modified_ns,file_size):
+    """목록 사진을 같은 비율의 작은 미리보기로 만들어 원본 전송과 레이아웃 흔들림을 줄입니다."""
+    from PIL import Image,ImageOps
+    with Image.open(path) as source:
+        preview=ImageOps.exif_transpose(source).convert("RGB")
+        preview.thumbnail((600,400),Image.Resampling.LANCZOS)
+        canvas=Image.new("RGB",(600,400),(233,233,229))
+        canvas.paste(preview,((600-preview.width)//2,(400-preview.height)//2))
+        stream=io.BytesIO()
+        canvas.save(stream,"JPEG",quality=85)
+    return base64.b64encode(stream.getvalue()).decode("ascii")
+
+
+def cards(results, prefix="search"):
+    """사진 중심 3열 목록을 9건씩 표시합니다. 작은 화면에서는 한 열로 정렬됩니다."""
+    if results.empty:
+        st.info("아직 표시할 물건이 없습니다.")
+        return
+    saved = set()
+    if st.session_state.get("owner_session"):
+        try:
+            saved = core.favorite_ids(st.session_state["owner_session"])
         except sec.SecurityError:
             pass
-    total_pages = max(1, (len(results) + 9) // 10)
+    total_pages = max(1, (len(results)+8)//9)
     page_key = prefix+"_page"
-    result_ids = tuple(int(value) for value in results.id)
-    if st.session_state.get(prefix+"_page_results") != result_ids:
+    ids = tuple(int(value) for value in results.id)
+    if st.session_state.get(prefix+"_page_results") != ids:
         st.session_state.pop(page_key,None)
-        st.session_state[prefix+"_page_results"] = result_ids
-    number = min(max(1, st.session_state.get(page_key, 1)), total_pages)
-    for row in results.iloc[(number-1)*10:number*10].itertuples():
-        record = requests.get(int(row.id))
-        with st.container(key=f"item_{row.id}"):
-            a,b,c = st.columns([1,4,1.2])
-            with a:
+        st.session_state[prefix+"_page_results"] = ids
+    number = min(max(1,st.session_state.get(page_key,1)),total_pages)
+    visible = list(results.iloc[(number-1)*9:number*9].itertuples())
+    for offset in range(0,len(visible),3):
+        for column,row in zip(st.columns(3, gap="medium"),visible[offset:offset+3]):
+            with column, st.container(key=f"catalog_card_{prefix}_{row.id}"):
                 path = sec.image_path(core.DATA,row.image)
                 if path:
-                    st.image(str(path),width=135)
-                    if row.is_demo_image: st.caption("시연용 사진")
+                    stat=path.stat()
+                    thumbnail=catalog_thumbnail(str(path),stat.st_mtime_ns,stat.st_size)
+                    st.markdown(f'<div class="catalog-visual"><img src="data:image/jpeg;base64,{thumbnail}" alt="{html.escape(row.title,quote=True)}"></div>',unsafe_allow_html=True)
                 else:
-                    label = "사진 비공개" if not getattr(row, "image_public", 1) else "사진 없음"
-                    st.markdown(f'<div class="photo-empty">{label}</div>',unsafe_allow_html=True)
-            with b:
-                st.text(row.title)
+                    label="사진 비공개" if not getattr(row,"image_public",1) else "사진 없음"
+                    st.markdown(f'<div class="catalog-photo-empty">{label}</div>',unsafe_allow_html=True)
+                st.markdown(f'<div class="catalog-title">{html.escape(row.title)}</div>',unsafe_allow_html=True)
+                place = row.place if row.place != "없음" else "장소 미등록"
+                st.caption(f"{place} · {pd.Timestamp(row.found_at).strftime('%m.%d')}")
                 if prefix=="recommendations":
-                    score = getattr(row, "combined_score", row.score)
-                    st.markdown(f"**추천 점수 {score:.1f} / {results.attrs.get('score_max',100)}점**")
-                st.caption(f"{row.category} · {row.color} · {row.place if row.place!='없음' else '장소 미등록'} · #{row.id}")
-                st.text(row.description[:100] + ("…" if len(row.description) > 100 else ""))
-                st.caption(f"{pd.Timestamp(row.found_at).strftime('%m.%d %H:%M')} 습득")
-                if hasattr(row,"distance_m"):
-                    st.caption(f"경로에서 {row.distance_m:.0f}m" if pd.notna(row.distance_m) else "발견 위치 미등록")
-                if record and record.status=="소유 확인 완료":st.caption("특징 확인됨 · 수령 대기")
-            with c:
-                label="수령 위치 보기" if record and record.status=="소유 확인 완료" else "수령 인증"
-                if st.button(label,key=f"pickup_{row.id}",type="primary"):
-                    st.session_state["pickup_item"]=int(row.id)
-            with st.expander("자세히 보기"):
-                st.text(row.description)
-                photos = core.public_photos(int(row.id))
-                if photos:
-                    columns = st.columns(len(photos))
-                    for index, (column, relative) in enumerate(zip(columns, photos), 1):
-                        path = sec.image_path(core.DATA, relative)
-                        if path:
-                            column.image(str(path), caption=f"사진 {index}", width="stretch")
-                if hasattr(row, "photo_similarity"):
-                    similarity = f"{row.photo_similarity:.3f}" if pd.notna(row.photo_similarity) else "미비교"
-                    st.caption(f"사진 유사도 {similarity} · 사진 점수 {row.photo_score:.1f}점")
-                if token and (int(row.id) in own_ids or record is not None):
-                    show_timeline(int(row.id), token, f"{prefix}_{row.id}")
-            if st.session_state.get("pickup_item") != int(row.id):continue
-            if int(row.id) in own_ids:
-                st.info("현재 등록자로 연결되어 있습니다. 혼자 시연하려면 분실자 역할로 전환하세요.")
-                st.button("분실자 역할로 전환",key=f"switch_recipient_{row.id}",type="primary",on_click=role_action,args=("recipient",int(row.id)))
-                continue
-            if record and show_pickup_status(record,f"{prefix}_{row.id}"):
-                continue
-            st.markdown("**물건 확인 질문**")
-            st.text(row.verification_question or "공개 사진에 보이지 않는 특징 한 가지를 알려주세요.")
-            st.caption("로컬 AI가 답변의 의미를 비교합니다. 표현이 달라도 의미가 유사하면 이 물건 아래에 수령 위치를 안내합니다.")
-            with st.form(f"proof_{row.id}"):
-                evidence=st.text_input("질문에 대한 답변",max_chars=1000,key=f"answer_{row.id}",type="password")
-                note=st.text_input("등록자에게 남길 말 (선택)",max_chars=500)
-                submit=st.form_submit_button("답변 확인 · 수령 위치 보기",type="primary")
-            if submit:
-                def request():return core.request_pickup(int(row.id),ensure_owner(),evidence,note)
-                with st.spinner("로컬 AI가 답변 의미를 비교하고 있습니다…"):
-                    ok,result=guard(request)
-                if ok:
-                    st.session_state["issued_otp"]=result[1]
-                    st.session_state["recent_pickup_request"]=int(result[0])
-                    st.session_state.setdefault("pickup_codes",{})[str(result[0])]=result[1]
-                    st.rerun()
-            if st.button("닫기",key=f"cancel_{row.id}"):
-                st.session_state.pop("pickup_item",None);st.rerun()
-    with st.container(horizontal=True, horizontal_alignment="center"):
-        st.pagination(total_pages, max_visible_pages=10, width=600, key=page_key)
+                    score=getattr(row,"combined_score",row.score)
+                    st.markdown(f"**추천 {score:.1f} / {results.attrs.get('score_max',100)}점**")
+                    st.caption(reasons(row))
+                else:
+                    st.caption(f"{row.category} · {row.color} · " + ("반환 완료" if row.status=="반환 완료" else "보관 중"))
+                a,b=st.columns([3,2])
+                recommendation = {"score":float(getattr(row,"combined_score",row.score)),
+                                  "maximum":results.attrs.get("score_max",100),"reasons":reasons(row)} if prefix=="recommendations" else None
+                a.button("상세 보기",key=f"detail_{prefix}_{row.id}",width="stretch",help=f"{row.title} 상세 보기",
+                         on_click=open_item,args=(int(row.id),None,recommendation))
+                b.button("저장됨" if row.id in saved else "저장",key=f"save_{prefix}_{row.id}",type="tertiary",width="stretch",
+                         on_click=save_interest,args=(int(row.id),row.id not in saved))
+    if total_pages>1:
+        with st.container(horizontal=True,horizontal_alignment="center"):
+            st.pagination(total_pages,max_visible_pages=10,width=600,key=page_key)
+
+
+def reset_search():
+    for key,value in SEARCH_DEFAULTS.items():
+        st.session_state[key]=value
+
+
+def clear_search_filter(key):
+    st.session_state[key]=SEARCH_DEFAULTS[key]
+
+
+SEARCH_DEFAULTS={"search_query":"","search_category":"전체","search_color":"전체",
+                 "search_route_enabled":False,"search_time_enabled":False}
+
+
+def registration_complete():
+    """완료 화면에서 중복 제출을 막고 확인 코드와 다음 행동을 안내합니다."""
+    completion = st.session_state.get("completion", {})
+    token = st.session_state.get("owner_session")
+    kind = completion.get("kind")
+    if not token or kind not in ("items", "reports"):
+        st.info("내 내역에서 등록한 내용을 확인해 주세요.")
+        st.button("내 내역 보기",on_click=go_page,args=("등록 내역",))
+        return
+    ok, mine = guard(core.owner_items if kind=="items" else core.owner_reports, token)
+    if not ok:
+        return
+    mine = mine.loc[mine.id.eq(completion.get("id"))]
+    if mine.empty:
+        st.info("등록 내역을 찾을 수 없습니다.")
+        return
+    row = next(mine.itertuples())
+    st.markdown('<div class="completion-mark" aria-hidden="true">✓</div>',unsafe_allow_html=True)
+    st.subheader("주운 물건을 등록했습니다" if kind=="items" else "분실 신고를 저장했습니다")
+    st.caption("등록 내용을 확인하고 다음 화면으로 이동하세요.")
+    with st.container(border=True):
+        if kind=="items":
+            path=sec.image_path(core.DATA,row.image)
+            if path:
+                st.image(str(path),width=180)
+        st.write(row.title)
+        st.caption(f"{row.category} · {row.color} · #{row.id}")
+        st.text(row.description if kind=="items" else row.keywords or "추가 특징 없음")
+    show_access_code("complete")
+    if st.session_state.get("issued_code"):
+        st.caption("확인 코드를 보관하면 다른 기기에서도 내역을 다시 열 수 있습니다.")
+    def view_result():
+        if kind=="items":
+            st.session_state["record_kind"]="주운 물건"
+        else:
+            st.session_state["selected_report"]=int(row.id)
+        go_page("등록 내역" if kind=="items" else "분실 신고 · 추천")
+    def another():
+        prefix="found_photos" if kind=="items" else "report_photos"
+        for key in list(st.session_state):
+            if key.startswith(prefix):
+                del st.session_state[key]
+        go_page("습득물 등록" if kind=="items" else "분실 신고 · 추천")
+    a,b=st.columns(2)
+    a.button("내 등록물 보기" if kind=="items" else "추천 물건 보기",type="primary",width="stretch",
+             on_click=view_result)
+    b.button("물건 찾기",width="stretch",on_click=go_page,args=("분실물 찾기",))
+    st.button("다른 물건 등록",on_click=another)
 
 
 items = core.read("items")
+inventory_ceiling = int(items.id.max()) if not items.empty else 0
 items = items.loc[items.status.ne("반환 완료")].copy()
 snapshot = core.inventory_revision()
 
@@ -467,33 +693,60 @@ def watch_inventory():
 
 watch_inventory()
 # 공개 목록에서는 사용자가 선택한 조건으로 후보를 좁힙니다.
-if page == "분실물 찾기":
+if page == "물건 상세":
+    item_detail()
+elif page == "등록 완료":
+    registration_complete()
+elif page == "분실물 찾기":
+    if st.session_state.pop("restore_search_filters",False):
+        for key,value in st.session_state.get("saved_search_filters",{}).items():
+            st.session_state[key]=value
     st.subheader("주인을 찾고 있는 물건")
     a, b, c = st.columns([3, 1, 1])
-    query = a.text_input("물건 이름이나 특징", max_chars=200, placeholder="예: 검정 가죽 지갑")
-    category = b.selectbox("종류", ["전체"] + core.CATEGORIES)
-    color = c.selectbox("색상", ["전체"] + core.COLORS)
+    query = a.text_input("물건 이름이나 특징", max_chars=200, placeholder="예: 검정 가죽 지갑",key="search_query")
+    category = b.selectbox("종류", ["전체"] + core.CATEGORIES,key="search_category")
+    color = c.selectbox("색상", ["전체"] + core.COLORS,key="search_color")
     route, radius, start, end = [], 100, None, None
     with st.expander("장소·시간으로 좁히기"):
-        if st.checkbox("이동한 장소로 찾기"):
+        if st.checkbox("이동한 장소로 찾기",key="search_route_enabled"):
             names, radius = route_input("search")
             route = core.route_coords(names)
-        if st.checkbox("습득 시간 범위 지정"):
-            d1 = st.date_input("습득 시작일", core.now().date() - timedelta(days=7))
-            d2 = st.date_input("습득 종료일", core.now().date())
+        if st.checkbox("습득 시간 범위 지정",key="search_time_enabled"):
+            d1 = st.date_input("습득 시작일", core.now().date() - timedelta(days=7),key="search_startdate")
+            d2 = st.date_input("습득 종료일", core.now().date(),key="search_enddate")
             start, end = datetime.combine(d1, time.min), datetime.combine(d2, time.max)
+    active_filters=[("search_query",query),("search_category",category if category!="전체" else ""),
+                    ("search_color",color if color!="전체" else ""),
+                    ("search_route_enabled","이동 동선" if st.session_state.search_route_enabled else ""),
+                    ("search_time_enabled","시간 범위" if st.session_state.search_time_enabled else "")]
+    if any(label for _,label in active_filters):
+        with st.container(horizontal=True,key="search_filters"):
+            for key,label in active_filters:
+                if label:
+                    st.button(f"{label} ×",key="chip_"+key,on_click=clear_search_filter,args=(key,))
+            st.button("조건 초기화",on_click=reset_search,key="reset_search")
+    show_access_code("search")
     if start and start > end:
         st.error("날짜 범위를 확인해 주세요.")
     else:
-        result = core.search(items, category, color, query, route, radius, start, end).sort_values("found_at", ascending=False)
-        st.write(f"{len(result)}건")
+        result = core.search(items, category, color, query, route, radius, start, end).sort_values(["found_at","id"], ascending=False,kind="stable")
+        st.caption(f"검색 결과 {len(result)}건 · 최근 발견 순")
+        if result.empty:
+            st.info("일치하는 물건이 아직 없습니다. 조건을 줄이거나 분실 신고를 남겨 주세요.")
+            a,b=st.columns(2)
+            if color!="전체":
+                a.button("색상 조건 해제",on_click=clear_search_filter,args=("search_color",))
+            else:
+                a.button("조건 초기화",on_click=reset_search,key="empty_reset")
+            b.button("분실 신고 남기기",type="primary",on_click=go_page,args=("분실 신고 · 추천",))
         with st.expander("지도에서 보기", expanded=bool(route)):
             draw_map(result, route, radius)
         if route:
             st.subheader("동선 매칭 점수")
             with st.expander("점수 자세히 보기"):
                 display_scores(result, "route_scores")
-        cards(result)
+        if not result.empty:
+            cards(result)
         public = ["id", "title", "category", "color", "place", "found_at", "status"]
         st.download_button("검색 결과 저장", sec.safe_csv(result[public]), "search_results.csv", "text/csv")
 
@@ -501,26 +754,32 @@ if page == "분실물 찾기":
 elif page == "습득물 등록":
     st.subheader("주운 물건 등록")
     show_access_code("found")
-    st.caption("사진과 기본 정보를 입력해 주세요. 별표(*)는 필수 항목입니다.")
+    st.caption("별표(*) 항목만 입력하면 등록할 수 있습니다. 소유 확인 설정은 선택입니다.")
+    st.markdown("**1. 사진·물건 정보**")
     found_photos = photo_inputs("found_photos", "사진 (선택 · 최대 3장)")
     with st.container():
         left, right = st.columns(2, gap="large")
         with left:
             title = st.text_input("물건 이름 *", max_chars=80)
+            title_error = st.empty()
             a, b = st.columns(2)
             category = a.selectbox("종류", core.CATEGORIES)
             color = b.selectbox("색상", core.COLORS)
             description = st.text_area("공개할 특징 *", max_chars=1000,
                 placeholder="예: 투명 케이스, 모서리 흠집, 둥근 스티커")
+            description_error = st.empty()
         with right:
+            st.markdown("**2. 발견·보관 장소**")
             place = st.selectbox("발견 장소", ["없음"] + list(PLACES.index))
             a, b = st.columns(2)
             date = a.date_input("발견 날짜", core.now().date())
             clock = b.time_input("발견 시각", core.now().time(), key="found_clock")
             storage = st.text_input("보관 장소 / 반환 안내 *", max_chars=250)
-            with st.expander("소유 확인 질문·공개 설정"):
+            storage_error = st.empty()
+            with st.expander("3. 소유 확인·공개 설정 (선택)"):
                 question = st.text_input("소유 확인 질문 (선택)", max_chars=200, placeholder="예: 지갑 안쪽에는 어떤 표시가 있나요?")
                 private = st.text_input("질문의 정답 (비공개)", max_chars=500, placeholder="예: 안쪽 별 모양",type="password")
+                question_error = st.empty()
                 image_public = st.checkbox("사진을 검색 목록에 공개", value=True,
                     help="이름·연락처 등이 있으면 해제하세요. 비공개 사진은 서버 내부 비교에만 사용합니다.")
                 manual_verification = st.checkbox("소유 확인은 등록자가 최종 승인",
@@ -528,6 +787,18 @@ elif page == "습득물 등록":
                 st.caption("질문·정답을 모두 비워 두면 등록자가 직접 확인합니다.")
         submitted = st.button("습득물 등록", type="primary")
     if submitted:
+        valid = True
+        for value, message, target in ((title, "물건 이름을 입력해 주세요.", title_error),
+                                       (description, "눈에 보이는 특징을 한 가지 이상 입력해 주세요.", description_error),
+                                       (storage, "물건을 받을 장소나 반환 안내를 입력해 주세요.", storage_error)):
+            if not value.strip():
+                target.error(message)
+                valid = False
+        if bool(question.strip()) != bool(private.strip()):
+            question_error.error("질문과 비공개 정답을 함께 입력해 주세요.")
+            valid = False
+        if not valid:
+            st.stop()
         def register():
             token = ensure_owner("registrant")
             # Validate required fields before parsing or writing the uploaded file.
@@ -549,7 +820,8 @@ elif page == "습득물 등록":
                 raise
         ok, iid = guard(register)
         if ok:
-            st.session_state["notice"] = f"#{iid} 등록했습니다. 확인 코드를 보관해 주세요."
+            st.session_state["completion"] = {"kind":"items","id":int(iid)}
+            st.session_state["page"] = "등록 완료"
             st.rerun()
 
 # 저장한 분실 신고를 기준으로 기본 조건 점수와 사진 점수를 합산합니다.
@@ -557,24 +829,37 @@ elif page == "분실 신고 · 추천":
     st.subheader("분실 신고")
     show_access_code("report")
     st.caption("기억나는 특징과 사진을 남기면 비슷한 습득물을 추천합니다.")
+    st.markdown("**1. 사진·물건 정보**")
     report_photos = photo_inputs("report_photos", "분실물 사진 (선택 · 최대 3장)")
     with st.expander("이동 동선 추가 (선택)"):
         names, radius = route_input("report")
     with st.container():
         title = st.text_input("분실물 이름 *", max_chars=80)
+        report_title_error = st.empty()
         a, b = st.columns(2)
         category = a.selectbox("분실물 종류", core.CATEGORIES)
         color = b.selectbox("분실물 색상", core.COLORS)
         keywords = st.text_input("기억나는 특징", max_chars=200,
             placeholder="예: 투명 케이스, 모서리 흠집, 둥근 스티커",
             help="눈에 보이는 단서를 적고, 여러 개라면 쉼표로 나누세요. 공개 등록 글과 표현이 같거나 AI가 의미가 비슷하다고 판단한 단서의 비율만큼 최대 20점을 받습니다.")
+        st.markdown("**2. 잃어버린 시간**")
         a, b = st.columns(2)
         d1 = a.date_input("분실 추정 시작 날짜", core.now().date())
         t1 = a.time_input("분실 추정 시작 시각", time.min)
         d2 = b.date_input("분실 추정 종료 날짜", core.now().date())
         t2 = b.time_input("분실 추정 종료 시각", core.now().time(), key="report_end_clock")
+        report_time_error = st.empty()
         sent = st.button("분실 신고 저장", type="primary")
     if sent:
+        valid = True
+        if not title.strip():
+            report_title_error.error("분실물 이름을 입력해 주세요.")
+            valid = False
+        if datetime.combine(d1, t1) > datetime.combine(d2, t2):
+            report_time_error.error("종료 시각을 시작 시각 이후로 지정해 주세요.")
+            valid = False
+        if not valid:
+            st.stop()
         def report():
             token = ensure_owner()
             values = dict(title=title, category=category, color=color, keywords=keywords,
@@ -587,9 +872,11 @@ elif page == "분실 신고 · 추천":
                 values["photo_embedding"] = embed_uploads([prepare_upload(entry) for entry in report_photos])
             return core.insert("reports", values, owner_session=token)
         with st.spinner("분실 신고를 저장하는 중입니다…"):
-            ok, _ = guard(report)
+            ok, report_id = guard(report)
         if ok:
-            st.session_state["notice"] = "분실 신고를 저장했습니다."
+            st.session_state["completion"] = {"kind":"reports","id":int(report_id)}
+            st.session_state["selected_report"] = int(report_id)
+            st.session_state["page"] = "등록 완료"
             st.rerun()
     if st.session_state.get("owner_session"):
         ok, reports = guard(core.owner_reports, st.session_state["owner_session"])
@@ -597,20 +884,22 @@ elif page == "분실 신고 · 추천":
             indexed = reports.set_index("id")
             rid = st.selectbox("내 분실 신고", list(indexed.index), format_func=lambda i: f"#{i} {indexed.loc[i,'title']}", key="selected_report")
             r = indexed.loc[rid]
+            core.mark_report_viewed(int(rid),st.session_state["owner_session"],inventory_ceiling)
             report_delete_button(rid, r.title, st.session_state["owner_session"], f"delete_report_{rid}")
             result = core.search(items.loc[items.category.eq(r.category)], r.category, r.color, r.keywords,
                 core.route_coords(json.loads(r.route)), int(r.radius), r.start_at, strict=False)
             st.subheader("비슷한 습득물")
             st.caption("입력한 조건과 사진이 비슷한 순서입니다.")
             if isinstance(r.photo_embedding, bytes) and not result.empty:
-                from photo_match import MAX_CANDIDATES, PHOTO_WEIGHT, rerank
                 with st.spinner("습득물 사진을 비교하고 있습니다…"):
-                    ok, ranked = guard(rerank, result, r.photo_embedding, core.DATA, report_color=r.color,
-                                       image_lookup=core.matching_photo_sets(result.head(MAX_CANDIDATES).id))
+                    ok, ranked = guard(rank_report, result, r.photo_embedding, r.color, snapshot, str(core.DATA))
                 if ok and ranked.photo_similarity.notna().any():
                     result = ranked
                 elif ok:
                     st.info("사진을 비교할 수 있는 후보가 없어 기존 순위를 표시합니다.")
+            notice = photo_comparison_notice(result)
+            if notice:
+                st.info(notice)
             with st.expander("추천 기준·점수 자세히 보기"):
                 st.caption("같은 종류의 반환 전 습득물 중 분실 시작 시각 이후 발견된 후보입니다. 동선은 순위 보조 기준이며 반경 밖이나 위치 미등록 후보도 남깁니다.")
                 if "photo_similarity" in result:
@@ -647,7 +936,9 @@ else:
                 st.session_state["owner_session"] = token
                 st.session_state.pop("issued_code", None)
                 st.rerun()
-        st.caption("코드 없이 등록된 이전 물건은 이 컴퓨터의 recover_registration.py로 연결할 수 있습니다.")
+    with st.expander("시연 설정"):
+        st.checkbox("한 브라우저에서 등록자·분실자 역할을 나누어 시연", key="demo_mode",
+                    help="일반 이용에는 필요 없습니다. 역할별 확인 코드를 따로 사용합니다.")
     token = st.session_state.get("owner_session")
     if token and st.button("내역 연결 해제"):
         tokens = {token, st.session_state.get("demo_registrant_session"), st.session_state.get("demo_recipient_session")}
@@ -660,6 +951,8 @@ else:
 
     @st.fragment(run_every="10s")
     def my_records():
+        if st.session_state["page"] != page:
+            st.rerun(scope="app")
         token = st.session_state.get("owner_session")
         if not token:
             st.info("확인 코드로 연결하면 등록한 물건과 수령 인증 내역을 볼 수 있습니다.")
@@ -671,8 +964,24 @@ else:
         if not ok:
             return
         st.caption("앱이 열려 있는 동안 10초마다 갱신됩니다. 연결은 1시간 뒤 만료됩니다.")
-        record_kind = st.segmented_control("내역 종류", ["주운 물건", "분실 신고", "수령 인증"],
+        updates = core.report_updates(token)
+        if not updates.empty:
+            st.caption("새 습득물이 등록된 분실 신고")
+            for update in updates.itertuples():
+                if st.button(f"{update.title} · 새 후보 {update.new_count}건",key=f"update_{update.id}"):
+                    st.session_state["selected_report"]=int(update.id)
+                    st.session_state["page"]="분실 신고 · 추천"
+                    st.rerun()
+        record_kind = st.segmented_control("내역 종류", ["주운 물건", "분실 신고", "수령 인증", "관심 물건"],
                                           default="주운 물건", key="record_kind")
+        if record_kind == "관심 물건":
+            favorites = core.favorite_ids(token)
+            selected = core.read("items")
+            selected = selected.loc[selected.id.isin(favorites)]
+            if selected.empty:
+                st.info("목록에서 저장한 물건을 이곳에서 다시 볼 수 있습니다.")
+            else:
+                cards(selected,"favorites")
         ok, reports = guard(core.owner_reports, token)
         if ok and not reports.empty and record_kind == "분실 신고":
             st.subheader("내 분실 신고")

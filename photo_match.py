@@ -236,6 +236,9 @@ def rerank(results, saved_embedding, data_dir, *, report_color=None, image_looku
     ranked["geometry_inliers"] = np.nan
     ranked["geometry_matches"] = np.nan
     ranked["matched_photo"] = np.nan
+    ranked["photo_visual"] = np.nan
+    ranked["photo_details"] = np.nan
+    used_color = False
     for row in ranked.head(MAX_CANDIDATES).itertuples():
         relative = image_lookup.get(row.id, row.image) if image_lookup is not None else row.image
         paths = [relative] if isinstance(relative, str) else relative
@@ -253,24 +256,28 @@ def rerank(results, saved_embedding, data_dir, *, report_color=None, image_looku
             except OSError:
                 continue
             for reference, reference_color, reference_details, reference_geometry in references:
-                score = float(np.clip(reference @ candidate, -1, 1))
-                same_color = report_color not in (None, "", "전체", "기타") and getattr(row, "color", None) == report_color
-                if same_color and reference_details is not None:
+                visual = float(np.clip(reference @ candidate, -1, 1))
+                score, detail = visual, np.nan
+                registered_color = report_color not in (None, "", "전체", "기타")
+                # 등록 색상이 있으면 색상 항목에서만 채점하고 사진은 외형·세부 특징을 비교합니다.
+                if registered_color and reference_details is not None:
                     detail = _detail_similarity(reference_details, candidate_details)
                     score = (1 - DETAIL_WEIGHT) * score + DETAIL_WEIGHT * detail
-                elif reference_color is not None and not same_color:
+                elif reference_color is not None and not registered_color:
                     score = _combine_similarity(score, _color_similarity(reference_color, candidate_color))
+                    used_color = True
                 inliers, matches, strength = photo_geometry.compare(reference_geometry, geometry)
                 score += .15 * strength * (1 - score)
                 # 사진 수에 가산점을 주지 않고 가장 잘 맞는 조합의 점수만 사용합니다.
                 if best is None or score > best[0]:
-                    best = (score, inliers, matches, index)
+                    best = (score, inliers, matches, index, visual, detail)
         if best is not None:
-            ranked.loc[row.Index, ["photo_similarity", "geometry_inliers", "geometry_matches", "matched_photo"]] = best
+            ranked.loc[row.Index, ["photo_similarity", "geometry_inliers", "geometry_matches", "matched_photo",
+                                   "photo_visual", "photo_details"]] = best
     ranked["photo_score"] = PHOTO_WEIGHT * ranked.photo_similarity.fillna(0).clip(lower=0)
     ranked["combined_score"] = ranked.score + ranked.photo_score
     if ranked.photo_similarity.notna().any():
-        ranked.attrs["photo_color_used"] = any(ref[1] is not None for ref in references)
+        ranked.attrs["photo_color_used"] = used_color
         ranked.attrs["photo_details_available"] = any(ref[2] is not None for ref in references)
         ranked.attrs["photo_geometry_available"] = any(ref[3] is not None for ref in references)
         ranked.attrs["score_limits"] = {**ranked.attrs.get("score_limits", {}), "photo_score": PHOTO_WEIGHT}

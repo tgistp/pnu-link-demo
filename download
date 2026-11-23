@@ -1,0 +1,15 @@
+data/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.streamlit/secrets.toml
+*.db
+*.db-*
+*.zip
+*.partial
+models/answer-minilm/model_quantized.onnx
+models/answer-minilm/tokenizer.json
+models/photo-dinov2/vision-int8.onnx
+node_modules/
