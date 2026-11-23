@@ -1,0 +1,4 @@
+GSAP 3.15.1
+Copyright (c) 2026 GreenSock. All rights reserved.
+Standard no-charge license: https://gsap.com/standard-license
+Bundled locally for React Bits FadeContent.

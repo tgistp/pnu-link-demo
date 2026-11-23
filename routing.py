@@ -1,5 +1,6 @@
 """공개 화면 주소를 Streamlit URL 바인딩과 연결합니다. 인증 정보는 URL에 넣지 않습니다."""
 import re
+from pathlib import Path
 import streamlit as st
 
 ROUTES={"처음":"","분실물 찾기":"find","습득물 등록":"found","분실 신고 · 추천":"lost",
@@ -9,18 +10,8 @@ SEARCH_KEYS=["search_query","search_category","search_color","search_route_enabl
              *(f"search_{index}" for index in range(6)),"searchradius","search_stops","search_startdate","search_enddate"]
 
 # URL 바인딩이 복원한 값도 즉시 Python 화면으로 전달하도록 popstate를 관찰합니다.
-_history=st.components.v2.component("pnu_browser_history",js="""
-export default function(component) {
-    const {setTriggerValue,parentElement}=component;
-    const host=parentElement.host||parentElement;
-    host.dataset.pnuHistoryReady='true';
-    const onPop=()=>setTriggerValue('navigate',{
-        route:(new URL(window.location.href).searchParams.get('route')||'').slice(0,81)
-    });
-    window.addEventListener('popstate',onPop,true);
-    return ()=>{window.removeEventListener('popstate',onPop,true);delete host.dataset.pnuHistoryReady;};
-}
-""")
+_history=st.components.v2.component("pnu_browser_history",
+    js=Path(__file__).with_name("browser_motion.js").read_text(encoding="utf-8"))
 
 
 def decode(route):

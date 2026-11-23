@@ -1,5 +1,13 @@
 # 사진 비교 구현 참고 자료
 
+## React Bits FadeContent / GSAP
+
+- FadeContent: https://github.com/DavidHDev/react-bits/blob/cbfda76dcc097f643af20cf18940fc0279dbee25/src/content/Animations/FadeContent/FadeContent.jsx
+- 해당 원본을 본문의 물건 목록과 상세 사진 전환에 사용합니다. 시작 화면에는 추가 적용하지 않습니다. 현재 고정 버전은 움직임 줄이기 설정을 지원합니다.
+- SpotlightCard는 본문 목록의 빛·테두리 반응에도 사용합니다.
+- Copyright (c) 2026 David Haz. MIT + Commons Clause. 전체 이용 조건은 ui/dist/FADE_CONTENT_LICENSE.md에 포함합니다.
+- GSAP 3.15.1: https://gsap.com/standard-license . 실행 코드는 앱에 포함하며 외부 CDN이나 API 키를 사용하지 않습니다.
+
 ## Streamlit Cropper
 
 - https://github.com/turner-anderson/streamlit-cropper

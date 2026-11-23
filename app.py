@@ -16,6 +16,7 @@ from streamlit_folium import st_folium
 import core
 import security as sec
 import routing
+import ui_components
 from photo_editor import photo_inputs, prepare_upload, save_photos, remove_photos
 from recommendation_summary import reasons, photo_comparison_notice
 
@@ -75,6 +76,10 @@ button[kind='primary']{border-radius:8px!important}
 [data-testid='stTextInput']:hover [data-baseweb='input'],[data-testid='stNumberInput']:hover [data-baseweb='input'],[data-testid='stDateInput']:hover [data-baseweb='input'],[data-testid='stTimeInput']:hover [data-baseweb='input'],[data-testid='stSelectbox']:hover [data-baseweb='select']>div,[data-testid='stTextArea']:hover textarea{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
 [data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [role='combobox'],[data-testid='stDateInput'] [data-testid$='RootElement'],[data-testid='stTimeInput'] [data-testid$='RootElement'],[data-testid='stNumberInput'] [data-testid$='RootElement']{border:1px solid #41484f!important;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
 [data-testid='stTextInput']:hover [data-testid='stTextInputRootElement'],[data-testid='stSelectbox']:hover [role='combobox'],[data-testid='stDateInput']:hover [data-testid$='RootElement'],[data-testid='stTimeInput']:hover [data-testid$='RootElement'],[data-testid='stNumberInput']:hover [data-testid$='RootElement']{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
+[data-testid='stDateInput'] :has(> [data-testid='stDateInputFieldsScroller']),[data-testid='stTimeInput'] :has(> [data-testid='stTimeInputTimeDisplay']){border:1px solid #41484f!important;border-radius:8px;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
+[data-testid='stDateInput']:hover :has(> [data-testid='stDateInputFieldsScroller']),[data-testid='stTimeInput']:hover :has(> [data-testid='stTimeInputTimeDisplay']){border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
+[data-testid='stDateInputField']{border:1px solid #41484f!important;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
+[data-testid='stDateInput']:hover [data-testid='stDateInputField']{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
 .st-key-registration_kind button{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease!important}
 .st-key-registration_kind button:first-of-type{color:#6cbaff!important;border-color:#2b78b7!important;background:#102536!important}
 .st-key-registration_kind button:last-of-type{color:#1ed760!important;border-color:#168e40!important;background:#102a1b!important}
@@ -86,9 +91,13 @@ button[kind='primary']{border-radius:8px!important}
 @media(prefers-reduced-motion:reduce){[class*='st-key-catalog_card_'],[class*='st-key-catalog_card_'] img,.st-key-registration_kind button{transition:none!important;transform:none!important}}
 </style>""", unsafe_allow_html=True)
 st.markdown(f"""<style>
-@keyframes viewEnter{view_generation}{{from{{opacity:.1;transform:translateY(9px)}}to{{opacity:1;transform:translateY(0)}}}}
-.st-key-view_transition{{animation:viewEnter{view_generation} .24s cubic-bezier(.2,.7,.3,1) both}}
-@media(prefers-reduced-motion:reduce){{.st-key-view_transition{{animation:none!important}}}}
+@keyframes viewEnter{view_generation}{{from{{opacity:.82;transform:translateY(3px)}}to{{opacity:1;transform:translateY(0)}}}}
+html:not([data-pnu-motion='native']) .st-key-view_transition{{animation:viewEnter{view_generation} .22s cubic-bezier(.2,.7,.3,1) both}}
+@keyframes pnuCrossIn{{from{{opacity:0}}to{{opacity:1}}}}
+@keyframes pnuCrossOut{{from{{opacity:1}}to{{opacity:0}}}}
+::view-transition-old(root){{animation:pnuCrossOut .24s cubic-bezier(.2,.7,.3,1) both}}
+::view-transition-new(root){{animation:pnuCrossIn .24s cubic-bezier(.2,.7,.3,1) both}}
+@media(prefers-reduced-motion:reduce){{.st-key-view_transition,::view-transition-old(root),::view-transition-new(root){{animation:none!important}}}}
 </style>""",unsafe_allow_html=True)
 
 if st.session_state["page"] == "처음":
@@ -99,6 +108,7 @@ if st.session_state["page"] == "처음":
         st.session_state["page"] = "분실 신고 · 추천" if result == "lost" else "습득물 등록"
         st.session_state["start_generation"] = st.session_state.get("start_generation", 0) + 1
         st.rerun()
+    st.markdown(f'<span class="pnu-view-ready" data-view-gen="{view_generation}" data-view-route="{html.escape(routing.current_route(),quote=True)}" hidden></span>',unsafe_allow_html=True)
     st.stop()
 
 
@@ -217,7 +227,7 @@ if st.session_state["page"] in ("습득물 등록", "분실 신고 · 추천"):
         st.session_state["page"] = "습득물 등록" if st.session_state["registration_kind"] == "주웠어요" else "분실 신고 · 추천"
     st.session_state["registration_kind"] = "주웠어요" if st.session_state["page"] == "습득물 등록" else "잃어버렸어요"
     st.segmented_control("등록 종류", ["잃어버렸어요", "주웠어요"], key="registration_kind",
-                         on_change=choose_registration)
+                         required=True,on_change=choose_registration)
 page = st.session_state["page"]
 if page == "처음":
     st.rerun()
@@ -460,6 +470,7 @@ def save_interest(item_id, saved):
     ok, _ = guard(save)
     if ok:
         st.toast("관심 물건에 저장했습니다. 내 내역에서 다시 볼 수 있습니다." if saved else "관심 물건에서 해제했습니다.")
+    return ok
 
 
 def pickup_panel(row, record, own_ids, prefix="detail"):
@@ -495,6 +506,29 @@ def pickup_panel(row, record, own_ids, prefix="detail"):
               args=(st.session_state.get("detail_return_page","분실물 찾기"),))
 
 
+@st.cache_data(max_entries=64,show_spinner=False)
+def gallery_preview(path,modified_ns,file_size):
+    """공개 사진만 갤러리 크기로 보내고 원본 경로는 브라우저에 넘기지 않습니다."""
+    from PIL import Image,ImageOps
+    with Image.open(path) as source:
+        image=ImageOps.exif_transpose(source).convert("RGB")
+        image.thumbnail((1200,1200),Image.Resampling.LANCZOS)
+        stream=io.BytesIO();image.save(stream,"JPEG",quality=88)
+    return base64.b64encode(stream.getvalue()).decode("ascii")
+
+
+@st.dialog("사진 크게 보기",width="large")
+def photo_dialog(item_id,index):
+    # 확대 요청이 들어올 때 공개 설정을 다시 확인합니다.
+    photos=core.public_photos(item_id)
+    if not 0<=index<len(photos):
+        st.info("공개된 사진을 확인할 수 없습니다.")
+        return
+    path=sec.image_path(core.DATA,photos[index])
+    if path:
+        st.image(str(path),width="stretch")
+
+
 def item_detail():
     """최신 공개 상태를 다시 조회하여 사진·발견 정보·수령 절차를 한 화면에 표시합니다."""
     back = st.session_state.get("detail_return_page", "분실물 찾기")
@@ -521,14 +555,17 @@ def item_detail():
     with left:
         photos = core.public_photos(int(row.id))
         if photos:
-            position = 0
-            if len(photos)>1:
-                position = st.segmented_control("물건 사진", list(range(len(photos))), default=0,
-                    format_func=lambda index:f"사진 {index+1}", key=f"detail_photo_{item_id}") or 0
-            path = sec.image_path(core.DATA, photos[position])
-            if path:
-                st.image(str(path), width="stretch")
-                st.caption(f"{position+1} / {len(photos)} · 사진을 확대해서 작은 특징도 확인하세요.")
+            previews=[]
+            for relative in photos:
+                path=sec.image_path(core.DATA,relative)
+                if path:
+                    stat=path.stat()
+                    previews.append("data:image/jpeg;base64,"+gallery_preview(str(path),stat.st_mtime_ns,stat.st_size))
+            event=ui_components.render(dict(mode="gallery",id=int(row.id),title=row.title,images=previews),
+                                       key=f"gallery_{row.id}") if previews else None
+            if event and event.get("action")=="enlarge" and type(event.get("index")) is int:
+                if 0<=event["index"]<len(previews):
+                    photo_dialog(int(row.id),event["index"])
         else:
             label = "사진 비공개" if not row.image_public else "등록된 사진이 없습니다"
             st.markdown(f'<div class="detail-photo-empty">{label}</div>',unsafe_allow_html=True)
@@ -595,33 +632,32 @@ def cards(results, prefix="search"):
         st.session_state[prefix+"_page_results"] = ids
     number = min(max(1,st.session_state.get(page_key,1)),total_pages)
     visible = list(results.iloc[(number-1)*9:number*9].itertuples())
-    for offset in range(0,len(visible),3):
-        for column,row in zip(st.columns(3, gap="medium"),visible[offset:offset+3]):
-            with column, st.container(key=f"catalog_card_{prefix}_{row.id}"):
-                path = sec.image_path(core.DATA,row.image)
-                if path:
-                    stat=path.stat()
-                    thumbnail=catalog_thumbnail(str(path),stat.st_mtime_ns,stat.st_size)
-                    st.markdown(f'<div class="catalog-visual"><img src="data:image/jpeg;base64,{thumbnail}" alt="{html.escape(row.title,quote=True)}"></div>',unsafe_allow_html=True)
-                else:
-                    label="사진 비공개" if not getattr(row,"image_public",1) else "사진 없음"
-                    st.markdown(f'<div class="catalog-photo-empty">{label}</div>',unsafe_allow_html=True)
-                st.markdown(f'<div class="catalog-title">{html.escape(row.title)}</div>',unsafe_allow_html=True)
-                place = row.place if row.place != "없음" else "장소 미등록"
-                st.caption(f"{place} · {pd.Timestamp(row.found_at).strftime('%m.%d')}")
-                if prefix=="recommendations":
-                    score=getattr(row,"combined_score",row.score)
-                    st.markdown(f"**추천 {score:.1f} / {results.attrs.get('score_max',100)}점**")
-                    st.caption(reasons(row))
-                else:
-                    st.caption(f"{row.category} · {row.color} · " + ("반환 완료" if row.status=="반환 완료" else "보관 중"))
-                a,b=st.columns([3,2])
-                recommendation = {"score":float(getattr(row,"combined_score",row.score)),
-                                  "maximum":results.attrs.get("score_max",100),"reasons":reasons(row)} if prefix=="recommendations" else None
-                a.button("상세 보기",key=f"detail_{prefix}_{row.id}",type="primary",width="stretch",help=f"{row.title} 상세 보기",
-                         on_click=open_item,args=(int(row.id),None,recommendation))
-                b.button("저장됨" if row.id in saved else "저장",key=f"save_{prefix}_{row.id}",type="tertiary",width="stretch",
-                         on_click=save_interest,args=(int(row.id),row.id not in saved))
+    payload=[]
+    for row in visible:
+        path=sec.image_path(core.DATA,row.image)
+        image=None
+        if path:
+            stat=path.stat()
+            image="data:image/jpeg;base64,"+catalog_thumbnail(str(path),stat.st_mtime_ns,stat.st_size)
+        payload.append(dict(id=int(row.id),title=row.title,image=image,
+            photo_label="사진 비공개" if not getattr(row,"image_public",1) else "사진 없음",
+            place=row.place if row.place!="없음" else "장소 미등록",date=pd.Timestamp(row.found_at).strftime('%m.%d'),
+            category=row.category,color=row.color,saved=row.id in saved,returned=row.status=="반환 완료",
+            score=float(getattr(row,"combined_score",row.score)) if prefix=="recommendations" else None,
+            reasons=reasons(row) if prefix=="recommendations" else ""))
+    event=ui_components.render(dict(mode="catalog",items=payload,maximum=results.attrs.get("score_max",100),
+                                    stamp=secrets.token_hex(6)),key="bits_"+prefix)
+    if event and type(event.get("id")) is int and event["id"] in {int(row.id) for row in visible}:
+        item_id=event["id"]
+        if event.get("action")=="detail":
+            row=next(row for row in visible if int(row.id)==item_id)
+            recommendation={"score":float(getattr(row,"combined_score",row.score)),
+                "maximum":results.attrs.get("score_max",100),"reasons":reasons(row)} if prefix=="recommendations" else None
+            open_item(item_id,recommendation=recommendation)
+            st.rerun(scope="app")
+        if event.get("action")=="favorite" and type(event.get("saved")) is bool:
+            if save_interest(item_id,event["saved"]):
+                st.rerun(scope="app")
     if total_pages>1:
         with st.container(horizontal=True,horizontal_alignment="center"):
             st.pagination(total_pages,max_visible_pages=10,width=600,key=page_key)
@@ -770,6 +806,10 @@ with st.container(key="view_transition"):
         st.caption("별표(*) 항목만 입력하면 등록할 수 있습니다. 소유 확인 설정은 선택입니다.")
         st.markdown("**1. 사진·물건 정보**")
         found_photos = photo_inputs("found_photos", "사진 (선택 · 최대 3장)")
+        image_public = st.checkbox("다른 사람이 사진을 볼 수 있게 하기", value=True,key="found_photo_public",
+            disabled=not bool(found_photos),help="올린 사진 전체에 적용됩니다. 켜면 목록·상세에 표시하고, 끄면 다른 사람에게 숨긴 채 유사도 비교에만 사용합니다. 이름·연락처가 찍혔다면 꺼주세요.")
+        if found_photos and not image_public:
+            st.caption("다른 사람에게는 사진이 보이지 않으며, 서버의 사진 유사도 비교에만 사용합니다.")
         with st.container():
             left, right = st.columns(2, gap="large")
             with left:
@@ -789,12 +829,10 @@ with st.container(key="view_transition"):
                 clock = b.time_input("발견 시각", core.now().time(), key="found_clock")
                 storage = st.text_input("보관 장소 / 반환 안내 *", max_chars=250)
                 storage_error = st.empty()
-                with st.expander("3. 소유 확인·공개 설정 (선택)"):
+                with st.expander("3. 소유 확인·반환 승인 (선택)"):
                     question = st.text_input("소유 확인 질문 (선택)", max_chars=200, placeholder="예: 지갑 안쪽에는 어떤 표시가 있나요?")
                     private = st.text_input("질문의 정답 (비공개)", max_chars=500, placeholder="예: 안쪽 별 모양",type="password")
                     question_error = st.empty()
-                    image_public = st.checkbox("사진을 검색 목록에 공개", value=True,
-                        help="이름·연락처 등이 있으면 해제하세요. 비공개 사진은 서버 내부 비교에만 사용합니다.")
                     manual_verification = st.checkbox("소유 확인은 등록자가 최종 승인",
                         help="AI를 통과해도 등록자 승인 전에는 보관 장소가 공개되지 않습니다.")
                     st.caption("질문·정답을 모두 비워 두면 등록자가 직접 확인합니다.")
@@ -1026,7 +1064,8 @@ with st.container(key="view_transition"):
                     show_timeline(int(row.id), token, f"owner_{row.id}")
                     with st.expander("사진 공개·승인 설정"):
                         with st.form(f"privacy_{row.id}"):
-                            public = st.checkbox("사진 공개", value=bool(row.image_public), key=f"public_{row.id}")
+                            public = st.checkbox("다른 사람이 사진을 볼 수 있게 하기", value=bool(row.image_public), key=f"public_{row.id}",
+                                help="끄면 목록·상세에서 사진을 숨기고 서버의 사진 유사도 비교에만 사용합니다.")
                             manual = st.checkbox("등록자 최종 승인 필요", value=bool(row.manual_verification), key=f"manual_{row.id}")
                             save_privacy = st.form_submit_button("설정 저장")
                         if save_privacy:
@@ -1087,3 +1126,6 @@ with st.expander("사용 중 불편한 점 남기기"):
         ok, _ = guard(core.submit_feedback, st.session_state["actor_id"], feedback_message)
         if ok:
             st.success("의견을 저장했습니다.")
+
+# 새 화면의 마지막 요소가 도착했음을 전환 제어기에 알려 중간 화면을 촬영하지 않습니다.
+st.markdown(f'<span class="pnu-view-ready" data-view-gen="{view_generation}" data-view-route="{html.escape(routing.current_route(),quote=True)}" hidden></span>',unsafe_allow_html=True)
