@@ -1,5 +1,13 @@
 # 사진 비교 구현 참고 자료
 
+## React Bits Pulse Heart / AnimatedContent
+
+- 공식 등록 자료: https://reactbits.dev/r/PulseHeart-JS-CSS.json 및 https://reactbits.dev/r/AnimatedContent-JS-CSS.json (2026-11-24 확인).
+- Pulse Heart는 본문 관심 저장 버튼에 사용하며 숫자는 표시하지 않습니다. 공식 수축·색상 전환·펄스 동작을 유지하고 아이콘만 앱의 기존 하트 경로로 교체해 별도 아이콘 패키지는 추가하지 않았습니다.
+- AnimatedContent는 본문 물건 목록의 등장 동작에 사용합니다. 목록 내부 갱신에서는 재생하지 않습니다. 상세 사진에는 FadeContent를 사용하며 부모 화면은 등장 효과가 끝난 뒤 준비된 화면으로 전환합니다.
+- Copyright (c) 2026 David Haz. MIT + Commons Clause. 라이선스 전문은 ui/dist/PULSE_HEART_LICENSE.md 및 ui/dist/ANIMATED_CONTENT_LICENSE.md에 포함합니다.
+- 실행 코드와 라이선스는 ui_components.py의 공개 화면 묶음에도 포함됩니다. 외부 CDN이나 API 키는 사용하지 않습니다.
+
 ## React Bits FadeContent / GSAP
 
 - FadeContent: https://github.com/DavidHDev/react-bits/blob/cbfda76dcc097f643af20cf18940fc0279dbee25/src/content/Animations/FadeContent/FadeContent.jsx

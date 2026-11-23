@@ -72,14 +72,15 @@ button[kind='primary']{border-radius:8px!important}
 .completion-mark{width:58px;height:58px;border-radius:50%;background:#1ed76022;color:#1ed760;display:flex;align-items:center;justify-content:center;font-size:30px;margin:1rem 0}
 .st-key-activity_strip{background:#14251b;border:1px solid #1ed760;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem}
 .st-key-route{display:none!important}
-[data-testid='stTextInput'] [data-baseweb='input'],[data-testid='stNumberInput'] [data-baseweb='input'],[data-testid='stDateInput'] [data-baseweb='input'],[data-testid='stTimeInput'] [data-baseweb='input'],[data-testid='stSelectbox'] [data-baseweb='select']>div,[data-testid='stTextArea'] textarea{border:1px solid #41484f!important;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
-[data-testid='stTextInput']:hover [data-baseweb='input'],[data-testid='stNumberInput']:hover [data-baseweb='input'],[data-testid='stDateInput']:hover [data-baseweb='input'],[data-testid='stTimeInput']:hover [data-baseweb='input'],[data-testid='stSelectbox']:hover [data-baseweb='select']>div,[data-testid='stTextArea']:hover textarea{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
-[data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [role='combobox'],[data-testid='stDateInput'] [data-testid$='RootElement'],[data-testid='stTimeInput'] [data-testid$='RootElement'],[data-testid='stNumberInput'] [data-testid$='RootElement']{border:1px solid #41484f!important;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
-[data-testid='stTextInput']:hover [data-testid='stTextInputRootElement'],[data-testid='stSelectbox']:hover [role='combobox'],[data-testid='stDateInput']:hover [data-testid$='RootElement'],[data-testid='stTimeInput']:hover [data-testid$='RootElement'],[data-testid='stNumberInput']:hover [data-testid$='RootElement']{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
-[data-testid='stDateInput'] :has(> [data-testid='stDateInputFieldsScroller']),[data-testid='stTimeInput'] :has(> [data-testid='stTimeInputTimeDisplay']){border:1px solid #41484f!important;border-radius:8px;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
-[data-testid='stDateInput']:hover :has(> [data-testid='stDateInputFieldsScroller']),[data-testid='stTimeInput']:hover :has(> [data-testid='stTimeInputTimeDisplay']){border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
-[data-testid='stDateInputField']{border:1px solid #41484f!important;transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease!important}
-[data-testid='stDateInput']:hover [data-testid='stDateInputField']{border-color:#1ed760!important;box-shadow:0 0 0 2px #1ed76022!important;background-color:#30363c!important}
+/* 테두리는 가장 바깥 입력 프레임 한 곳에만 표시합니다. */
+:is([data-testid='stTextInput'],[data-testid='stNumberInput'],[data-testid='stDateInput'],[data-testid='stTimeInput'],[data-testid='stSelectbox'],[data-testid='stTextArea']){--pnu-input-border:#41484f;--pnu-input-ring:transparent}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput'],[data-testid='stDateInput'],[data-testid='stTimeInput'],[data-testid='stSelectbox'],[data-testid='stTextArea']):is(:hover,:focus-within){--pnu-input-border:#1ed760;--pnu-input-ring:#1ed76022}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput']) [data-baseweb='input'],[data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [data-baseweb='select']>div,[data-testid='stSelectbox'] [role='group']:has(>[role='combobox']),[data-testid='stTextAreaRootElement'],[data-testid='stTextArea'] [data-baseweb='textarea'],[data-testid='stDateInput'] :has(>[data-testid='stDateInputField']),[data-testid='stTimeInput'] :has(>[data-testid='stTimeInputTimeDisplay']){border:1px solid var(--pnu-input-border)!important;box-shadow:0 0 0 2px var(--pnu-input-ring)!important;outline:none!important;transition:border-color .16s,box-shadow .16s,background-color .16s!important}
+[data-testid='stTextArea'] textarea,[data-testid='stSelectbox'] [role='combobox'],[data-testid='stDateInputField']{border:0!important;box-shadow:none!important;outline:none!important}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput']) [data-baseweb='input'] [data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [data-baseweb='select'] [role='combobox']{border:0!important;box-shadow:none!important;outline:none!important}
+html[data-pnu-favorite-pending='true'] [data-testid='stStatusWidget']{visibility:hidden}
+html[data-pnu-favorite-pending='true'] [data-stale='true']{opacity:1!important}
+[data-testid='stDateInput'] :has(>[data-testid='stDateInputField']),[data-testid='stTimeInput'] :has(>[data-testid='stTimeInputTimeDisplay']){border-radius:8px}
 .st-key-registration_kind button{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease!important}
 .st-key-registration_kind button:first-of-type{color:#6cbaff!important;border-color:#2b78b7!important;background:#102536!important}
 .st-key-registration_kind button:last-of-type{color:#1ed760!important;border-color:#168e40!important;background:#102a1b!important}
@@ -93,11 +94,14 @@ button[kind='primary']{border-radius:8px!important}
 st.markdown(f"""<style>
 @keyframes viewEnter{view_generation}{{from{{opacity:.82;transform:translateY(3px)}}to{{opacity:1;transform:translateY(0)}}}}
 html:not([data-pnu-motion='native']) .st-key-view_transition{{animation:viewEnter{view_generation} .22s cubic-bezier(.2,.7,.3,1) both}}
-@keyframes pnuCrossIn{{from{{opacity:0}}to{{opacity:1}}}}
-@keyframes pnuCrossOut{{from{{opacity:1}}to{{opacity:0}}}}
-::view-transition-old(root){{animation:pnuCrossOut .24s cubic-bezier(.2,.7,.3,1) both}}
-::view-transition-new(root){{animation:pnuCrossIn .24s cubic-bezier(.2,.7,.3,1) both}}
-@media(prefers-reduced-motion:reduce){{.st-key-view_transition,::view-transition-old(root),::view-transition-new(root){{animation:none!important}}}}
+@keyframes pnuCrossIn{{from{{opacity:0;transform:translateY(var(--pnu-enter-y,12px))}}to{{opacity:1;transform:translateY(0)}}}}
+@keyframes pnuCrossOut{{from{{opacity:1;transform:translateY(0)}}to{{opacity:0;transform:translateY(var(--pnu-exit-y,-6px))}}}}
+html[data-pnu-motion='native'] .st-key-view_transition{{view-transition-name:pnu-content}}
+::view-transition-old(root),::view-transition-new(root){{animation:none;mix-blend-mode:normal}}
+::view-transition-group(pnu-content){{animation-duration:.4s;animation-timing-function:cubic-bezier(.22,1,.36,1)}}
+::view-transition-old(pnu-content){{animation:pnuCrossOut .18s ease-out both}}
+::view-transition-new(pnu-content){{animation:pnuCrossIn .4s cubic-bezier(.22,1,.36,1) both}}
+@media(prefers-reduced-motion:reduce){{.st-key-view_transition,::view-transition-old(pnu-content),::view-transition-new(pnu-content){{animation:none!important}}}}
 </style>""",unsafe_allow_html=True)
 
 if st.session_state["page"] == "처음":
@@ -464,9 +468,23 @@ def open_item(item_id, origin=None, recommendation=None):
     go_page("물건 상세")
 
 
-def save_interest(item_id, saved):
+def save_interest(item_id, saved, *, notify=True):
     def save():
         return core.set_favorite(int(item_id), ensure_owner(), saved)
+    if not notify:
+        # 조각 콜백에서 화면 메시지를 출력하면 상단 화면을 덮어쓸 수 있어 결과만 반환합니다.
+        try:
+            save()
+            return True
+        except sec.SecurityError:
+            return False
+        except Exception:
+            try:
+                with core.connect() as con:
+                    sec.event(con, core.now(), "favorite_error", outcome="error")
+            except sqlite3.Error:
+                pass
+            return False
     ok, _ = guard(save)
     if ok:
         st.toast("관심 물건에 저장했습니다. 내 내역에서 다시 볼 수 있습니다." if saved else "관심 물건에서 해제했습니다.")
@@ -613,6 +631,7 @@ def catalog_thumbnail(path,modified_ns,file_size):
     return base64.b64encode(stream.getvalue()).decode("ascii")
 
 
+@st.fragment
 def cards(results, prefix="search"):
     """사진 중심 3열 목록을 9건씩 표시합니다. 작은 화면에서는 한 열로 정렬됩니다."""
     if results.empty:
@@ -624,6 +643,12 @@ def cards(results, prefix="search"):
             saved = core.favorite_ids(st.session_state["owner_session"])
         except sec.SecurityError:
             pass
+    # 관심 변경은 목록 조각만 갱신합니다. 지도·검색·AI 계산을 다시 실행하지 않습니다.
+    if prefix == "favorites":
+        results = results.loc[results.id.isin(saved)]
+        if results.empty:
+            st.info("저장한 관심 물건이 없습니다.")
+            return
     total_pages = max(1, (len(results)+8)//9)
     page_key = prefix+"_page"
     ids = tuple(int(value) for value in results.id)
@@ -645,8 +670,14 @@ def cards(results, prefix="search"):
             category=row.category,color=row.color,saved=row.id in saved,returned=row.status=="반환 완료",
             score=float(getattr(row,"combined_score",row.score)) if prefix=="recommendations" else None,
             reasons=reasons(row) if prefix=="recommendations" else ""))
+    allowed_ids={int(row.id) for row in visible}
+    def favorite_event(event):
+        # 브라우저가 보내는 공개 ID와 저장 여부를 확인한 뒤 현재 사용자에게만 저장합니다.
+        return (type(event.get("id")) is int and event["id"] in allowed_ids
+                and type(event.get("saved")) is bool
+                and save_interest(event["id"],event["saved"],notify=False))
     event=ui_components.render(dict(mode="catalog",items=payload,maximum=results.attrs.get("score_max",100),
-                                    stamp=secrets.token_hex(6)),key="bits_"+prefix)
+                                    stamp=secrets.token_hex(6),pageIdentity=(f"favorites-{number}" if prefix=="favorites" else None)),key="bits_"+prefix,on_favorite=favorite_event)
     if event and type(event.get("id")) is int and event["id"] in {int(row.id) for row in visible}:
         item_id=event["id"]
         if event.get("action")=="detail":
@@ -655,9 +686,6 @@ def cards(results, prefix="search"):
                 "maximum":results.attrs.get("score_max",100),"reasons":reasons(row)} if prefix=="recommendations" else None
             open_item(item_id,recommendation=recommendation)
             st.rerun(scope="app")
-        if event.get("action")=="favorite" and type(event.get("saved")) is bool:
-            if save_interest(item_id,event["saved"]):
-                st.rerun(scope="app")
     if total_pages>1:
         with st.container(horizontal=True,horizontal_alignment="center"):
             st.pagination(total_pages,max_visible_pages=10,width=600,key=page_key)

@@ -24,6 +24,10 @@ export default function(component) {
         if(current)state.scrolls.set(current.dataset.viewRoute,main().scrollTop);
     };
     const settleScroll=()=>{
+        if(root.dataset.pnuFavoritePending==='true'&&(!document.querySelector('iframe[src*="pnu_catalog"]')||
+            (state.favoriteAck&&document.querySelector('[data-testid="stApp"]')?.getAttribute('data-test-script-state')==='notRunning'))){
+            root.dataset.pnuFavoritePending='false';clearTimeout(state.favoriteTimer);
+        }
         const current=marker();
         if(!current||current.dataset.viewGen===state.scrollGeneration||state.scrollPending===current.dataset.viewGen)return;
         if(document.querySelector('[data-testid="stApp"]')?.getAttribute('data-test-script-state')!=='notRunning')return;
@@ -45,6 +49,7 @@ export default function(component) {
     settleScroll();
 
     function begin(restore=false) {
+        root.dataset.pnuFavoritePending='false';clearTimeout(state.favoriteTimer);
         rememberScroll();state.restoreScroll=restore;
         if(reduce.matches||!document.startViewTransition||state.active)return;
         const previous=marker()?.dataset.viewGen;
@@ -53,6 +58,9 @@ export default function(component) {
         const ready=new Promise(resolve=>{resolveReady=resolve;});
         const active={transition:null,observer:null,timer:null,settling:false};
         state.active=active;
+        // The content moves back in the opposite direction; navigation stays visually fixed.
+        root.style.setProperty('--pnu-enter-y',restore?'-10px':'12px');
+        root.style.setProperty('--pnu-exit-y',restore?'6px':'-6px');
         root.dataset.pnuTransitionState='waiting';
         root.dataset.pnuTransitionCount=String(++state.count);
         const release=()=>{
@@ -84,7 +92,7 @@ export default function(component) {
         active.observer.observe(document.body,{subtree:true,childList:true,attributes:true,
             attributeFilter:['data-view-gen','data-test-script-state','data-pnu-content-ready']});
         // Slow requests or validation must never leave an unresponsive screenshot overlay.
-        active.timer=setTimeout(release,1200);
+        active.timer=setTimeout(release,1800);
         try {
             active.transition=document.startViewTransition(()=>ready);
             active.transition.ready.then(()=>{root.dataset.pnuTransitionState='animating';}).catch(()=>{});
@@ -116,6 +124,16 @@ export default function(component) {
         setTriggerValue('navigate',{route:(new URL(window.location.href).searchParams.get('route')||'').slice(0,81)});
     };
     const onLanding=event=>{
+        if(['pnu:favoritePending','pnu:favoriteSettled'].includes(event.data?.type)){
+            const frame=Array.from(document.querySelectorAll('iframe')).find(frame=>frame.contentWindow===event.source&&frame.src.includes('pnu_catalog'));
+            if(!frame)return;
+            if(event.data.type==='pnu:favoritePending'){
+                clearTimeout(state.favoriteTimer);state.favoriteAck=false;
+                root.dataset.pnuFavoritePending='true';
+                state.favoriteTimer=setTimeout(()=>{root.dataset.pnuFavoritePending='false';},12500);
+            }else{state.favoriteAck=true;settleScroll();}
+            return;
+        }
         if(event.data?.type==='pnu:contentReady'){
             const frame=Array.from(document.querySelectorAll('iframe')).find(frame=>frame.contentWindow===event.source&&frame.src.includes('pnu_catalog'));
             if(frame)frame.dataset.pnuContentReady='true';
