@@ -41,7 +41,11 @@ st.markdown("""<style>
 h1{font-size:1.7rem!important;letter-spacing:-.04em}h2{font-size:1.25rem!important}h3{font-size:1.05rem!important}
 .st-key-main_menu{border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent);padding-bottom:.4rem;margin-bottom:1rem}
 .st-key-main_menu [role='radiogroup']{gap:1.4rem}.st-key-main_menu [data-baseweb='radio']>div:first-child,.st-key-main_menu [data-testid='stRadioOption']>div>div:first-child{display:none}
-.st-key-main_menu label{padding:.4rem .1rem;border-bottom:2px solid transparent}.st-key-main_menu label:has(input:checked){border-color:#1ed760;font-weight:700}
+.st-key-main_menu [data-testid='stRadioOption']{position:relative;padding:.4rem .1rem;border-bottom:2px solid transparent;font-weight:600}
+/* 기존 밑줄은 중앙으로 수축하고 새 밑줄은 중앙에서 양옆으로 펼쳐집니다. */
+.st-key-main_menu [data-testid='stRadioOption']::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:#1ed760;border-radius:2px;transform:scaleX(0);transform-origin:center;transition:transform .14s cubic-bezier(.4,0,.2,1)}
+.st-key-main_menu [data-testid='stRadioOption']:has(input:checked)::after{transform:scaleX(1);transition-duration:.24s;transition-delay:.12s}
+@media(prefers-reduced-motion:reduce){.st-key-main_menu [data-testid='stRadioOption']::after{transition:none!important}}
 .st-key-main_menu label:has(input:focus-visible){outline:2px solid #1ed760;outline-offset:3px}
 button[kind='primary']{background:#1ed760!important;border-color:#1ed760!important;color:#06170c!important;border-radius:5px!important}
 button[kind='primary']:hover{background:#3ee67b!important}
@@ -91,17 +95,9 @@ html[data-pnu-favorite-pending='true'] [data-stale='true']{opacity:1!important}
 @media(max-width:640px){.block-container{padding-top:2rem;padding-left:1rem;padding-right:1rem}.st-key-main_menu [role='radiogroup']{gap:.8rem}[class*='st-key-catalog_card_'] [data-testid='stImage'] img{height:220px!important}.catalog-title{min-height:0}}
 @media(prefers-reduced-motion:reduce){[class*='st-key-catalog_card_'],[class*='st-key-catalog_card_'] img,.st-key-registration_kind button{transition:none!important;transform:none!important}}
 </style>""", unsafe_allow_html=True)
-st.markdown(f"""<style>
-@keyframes viewEnter{view_generation}{{from{{opacity:.82;transform:translateY(3px)}}to{{opacity:1;transform:translateY(0)}}}}
-html:not([data-pnu-motion='native']) .st-key-view_transition{{animation:viewEnter{view_generation} .22s cubic-bezier(.2,.7,.3,1) both}}
-@keyframes pnuCrossIn{{from{{opacity:0;transform:translateY(var(--pnu-enter-y,12px))}}to{{opacity:1;transform:translateY(0)}}}}
-@keyframes pnuCrossOut{{from{{opacity:1;transform:translateY(0)}}to{{opacity:0;transform:translateY(var(--pnu-exit-y,-6px))}}}}
-html[data-pnu-motion='native'] .st-key-view_transition{{view-transition-name:pnu-content}}
-::view-transition-old(root),::view-transition-new(root){{animation:none;mix-blend-mode:normal}}
-::view-transition-group(pnu-content){{animation-duration:.4s;animation-timing-function:cubic-bezier(.22,1,.36,1)}}
-::view-transition-old(pnu-content){{animation:pnuCrossOut .18s ease-out both}}
-::view-transition-new(pnu-content){{animation:pnuCrossIn .4s cubic-bezier(.22,1,.36,1) both}}
-@media(prefers-reduced-motion:reduce){{.st-key-view_transition,::view-transition-old(pnu-content),::view-transition-new(pnu-content){{animation:none!important}}}}
+# 본문 도착 시 브라우저에서만 짧게 나타나며 클릭이나 렌더링을 막지 않습니다.
+st.markdown("""<style>
+html[data-pnu-transition-state='updating'] .st-key-view_transition [data-stale='true']{opacity:.88!important}
 </style>""",unsafe_allow_html=True)
 
 if st.session_state["page"] == "처음":
@@ -816,8 +812,10 @@ with st.container(key="view_transition"):
                 else:
                     a.button("조건 초기화",on_click=reset_search,key="empty_reset")
                 b.button("분실 신고 남기기",type="primary",on_click=go_page,args=("분실 신고 · 추천",))
-            with st.expander("지도에서 보기", expanded=bool(route)):
-                draw_map(result, route, radius)
+            # 접힌 지도는 생성하지 않아 목록·메뉴 이동에서 지도 렌더링 비용을 줄입니다.
+            with st.expander("지도에서 보기", expanded=bool(route),key="search_map_open",on_change="rerun") as map_panel:
+                if map_panel.open:
+                    draw_map(result, route, radius)
             if route:
                 st.subheader("동선 매칭 점수")
                 with st.expander("점수 자세히 보기"):

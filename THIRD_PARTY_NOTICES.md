@@ -1,5 +1,13 @@
 # 사진 비교 구현 참고 자료
 
+## React Bits ClickSpark / v0.35 본문 동작
+
+- 공식 자료: https://reactbits.dev/r/ClickSpark-JS-CSS.json (2026-11-24 확인).
+- 물건 카드의 클릭 반응에 사용하며 클릭 순간에만 짧게 실행합니다. 사진 열기나 관심 저장이 효과 종료를 기다리지 않습니다. 움직임 줄이기 설정에서는 실행하지 않습니다.
+- 저작권과 전체 라이선스는 ui/dist/CLICK_SPARK_LICENSE.md에 포함합니다.
+- 메뉴 밑줄은 중앙 기준 CSS transform 전환이며, 본문 도착 효과는 브라우저 Web Animations API를 사용한 자체 코드입니다. 화면 캡처 대기나 화면 전체 입력 차단을 사용하지 않습니다.
+- AnimatedContent는 목록, FadeContent는 사진 전환, SpotlightCard는 카드 hover, Pulse Heart는 관심 저장에 각각 사용합니다.
+
 ## React Bits Pulse Heart / AnimatedContent
 
 - 공식 등록 자료: https://reactbits.dev/r/PulseHeart-JS-CSS.json 및 https://reactbits.dev/r/AnimatedContent-JS-CSS.json (2026-11-24 확인).

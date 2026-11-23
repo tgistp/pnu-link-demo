@@ -9,7 +9,7 @@ PAGES={route:page for page,route in ROUTES.items()}
 SEARCH_KEYS=["search_query","search_category","search_color","search_route_enabled","search_time_enabled",
              *(f"search_{index}" for index in range(6)),"searchradius","search_stops","search_startdate","search_enddate"]
 
-# URL 바인딩이 복원한 값도 즉시 Python 화면으로 전달하도록 popstate를 관찰합니다.
+# v0.35: URL 방문 기록과 입력을 막지 않는 본문 전환을 같은 컨트롤러에서 관찰합니다.
 _history=st.components.v2.component("pnu_browser_history",
     js=Path(__file__).with_name("browser_motion.js").read_text(encoding="utf-8"))
 
