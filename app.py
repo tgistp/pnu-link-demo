@@ -466,12 +466,34 @@ def draw_map(results, route, radius):
         folium.Circle(
             p, radius=radius, color="#17a957", weight=1, fill=True, fill_opacity=0.06
         ).add_to(m)
+    # 핀을 만들 때부터 SVG를 지정해 기본 PNG가 잠깐 로드되는 경우도 막습니다.
+    pin_icon = folium.utilities.JsCode(
+        "L.divIcon("
+        + json.dumps(
+            dict(
+                html=(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" '
+                    'viewBox="0 0 30 40" aria-hidden="true">'
+                    '<path d="M15 1C7.3 1 1 7.3 1 15c0 10.4 14 24 14 24s14-13.6 '
+                    '14-24C29 7.3 22.7 1 15 1Z" fill="#16834c" stroke="#fff" stroke-width="2"/>'
+                    '<circle cx="15" cy="15" r="5" fill="#fff"/></svg>'
+                ),
+                iconSize=[30, 40],
+                iconAnchor=[15, 40],
+                popupAnchor=[0, -35],
+                className="pnu-map-pin",
+            )
+        )
+        + ")"
+    )
     for row in results.dropna(subset=["lat", "lon"]).head(200).itertuples():
-        folium.Marker(
+        marker = folium.Marker(
             [row.lat, row.lon],
             tooltip=html.escape(row.title),
             popup=html.escape(f"#{row.id} · {row.place}"),
-        ).add_to(m)
+        )
+        marker.options["icon"] = pin_icon
+        marker.add_to(m)
     bounds = PLACES[["lat", "lon"]]
     m.fit_bounds(
         [
@@ -767,8 +789,12 @@ def item_detail():
         )
         st.caption("보관 장소는 소유 확인이 끝난 뒤 안내합니다.")
     if pd.notna(row.lat) and pd.notna(row.lon):
-        with st.expander("발견 위치 지도"):
-            draw_map(selected, [], 100)
+        # 접힌 상태에서 지도를 만들면 숨겨진 영역의 크기로 초기화될 수 있습니다.
+        with st.expander(
+            "발견 위치 지도", key=f"detail_map_{row.id}", on_change="rerun"
+        ) as detail_map:
+            if detail_map.open:
+                draw_map(selected, [], 100)
     if token and (int(row.id) in own_ids or record is not None):
         show_timeline(int(row.id), token, f"detail_{row.id}")
     with st.container(border=True, key="pickup_panel"):
