@@ -1,0 +1,57 @@
+.block-container{max-width:1140px;padding-top:3.7rem}
+h1{font-size:1.7rem!important;letter-spacing:-.04em}h2{font-size:1.25rem!important}h3{font-size:1.05rem!important}
+.st-key-main_menu{border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent);padding-bottom:.4rem;margin-bottom:1rem}
+.st-key-main_menu [role='radiogroup']{gap:1.4rem}.st-key-main_menu [data-baseweb='radio']>div:first-child,.st-key-main_menu [data-testid='stRadioOption']>div>div:first-child{display:none}
+.st-key-main_menu [data-testid='stRadioOption']{position:relative;padding:.4rem .1rem;border-bottom:2px solid transparent;font-weight:600}
+/* 기존 밑줄은 중앙으로 수축하고 새 밑줄은 중앙에서 양옆으로 펼쳐집니다. */
+.st-key-main_menu [data-testid='stRadioOption']::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:#1ed760;border-radius:2px;transform:scaleX(0);transform-origin:center;transition:transform .14s cubic-bezier(.4,0,.2,1)}
+.st-key-main_menu [data-testid='stRadioOption']:has(input:checked)::after{transform:scaleX(1);transition-duration:.24s;transition-delay:.12s}
+@media(prefers-reduced-motion:reduce){.st-key-main_menu [data-testid='stRadioOption']::after{transition:none!important}}
+.st-key-main_menu label:has(input:focus-visible){outline:2px solid #1ed760;outline-offset:3px}
+button[kind='primary']{background:#1ed760!important;border-color:#1ed760!important;color:#06170c!important;border-radius:5px!important}
+button[kind='primary']:hover{background:#3ee67b!important}
+[class*='st-key-item_']{border:1px solid color-mix(in srgb,currentColor 13%,transparent);background:color-mix(in srgb,currentColor 3%,transparent);padding:1rem;border-radius:7px}
+.photo-empty{height:96px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,currentColor 7%,transparent);font-size:.8rem;color:inherit}
+.item-status{font-size:.75rem;color:#08783b;background:#ddf7e8;padding:3px 7px;border-radius:3px}
+.app-brand{font-family:Arial,'Malgun Gothic',sans-serif;font-weight:800;letter-spacing:-.045em!important}.app-brand span{color:#1ed760}
+.processing-history{list-style:none;padding:0;margin:.4rem 0}
+.processing-history li{border-left:2px solid #3e5948;padding:0 0 1.25rem 1rem;position:relative}
+.processing-history li:last-child{padding-bottom:0}
+.processing-history li:before{content:"";width:9px;height:9px;background:#1ed760;border-radius:50%;position:absolute;left:-5px;top:6px}
+.processing-history strong{display:block;font-weight:600}
+.processing-history small{display:block;opacity:.7;margin-top:.25rem}
+.block-container{max-width:1180px}
+button[kind='primary']{border-radius:8px!important}
+[class*='st-key-catalog_card_']{border:1px solid #343a40;border-radius:16px;padding:14px;background:#1c1f22;margin-bottom:20px;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+[class*='st-key-catalog_card_']:hover,[class*='st-key-catalog_card_']:focus-within{transform:translateY(-3px);border-color:#1ed760;box-shadow:0 12px 28px #0005}
+[class*='st-key-catalog_card_'] [data-testid='stImage']{overflow:hidden;border-radius:10px;background:#e9e9e5;width:100%!important;max-width:none!important}
+[class*='st-key-catalog_card_'] [data-testid='stImage'] img{height:200px!important;width:100%!important;object-fit:contain;transition:transform .2s ease}
+[class*='st-key-catalog_card_']:hover [data-testid='stImage'] img{transform:scale(1.025)}
+.catalog-title{font-size:1.06rem;font-weight:650;line-height:1.45;min-height:3.1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:.25rem}
+.catalog-visual{height:200px;width:100%;border-radius:10px;overflow:hidden;background:#181b1d}
+.catalog-visual img{display:block;width:100%;height:100%;object-fit:contain;transition:transform .2s ease}
+[class*='st-key-catalog_card_']:hover .catalog-visual img{transform:scale(1.025)}
+.catalog-photo-empty,.detail-photo-empty{display:flex;align-items:center;justify-content:center;color:#c4cbd0;background:#202428;border-radius:10px;height:200px}
+.detail-photo-empty{height:340px}
+.st-key-pickup_panel{border-radius:14px!important;background:#1c2024;border-color:#38424b!important;margin-top:1.5rem}
+.completion-mark{width:58px;height:58px;border-radius:50%;background:#1ed76022;color:#1ed760;display:flex;align-items:center;justify-content:center;font-size:30px;margin:1rem 0}
+.st-key-activity_strip{background:#14251b;border:1px solid #1ed760;border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem}
+.st-key-route{display:none!important}
+/* 테두리는 가장 바깥 입력 프레임 한 곳에만 표시합니다. */
+:is([data-testid='stTextInput'],[data-testid='stNumberInput'],[data-testid='stDateInput'],[data-testid='stTimeInput'],[data-testid='stSelectbox'],[data-testid='stTextArea']){--pnu-input-border:#41484f;--pnu-input-ring:transparent}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput'],[data-testid='stDateInput'],[data-testid='stTimeInput'],[data-testid='stSelectbox'],[data-testid='stTextArea']):is(:hover,:focus-within){--pnu-input-border:#1ed760;--pnu-input-ring:#1ed76022}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput']) [data-baseweb='input'],[data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [data-baseweb='select']>div,[data-testid='stSelectbox'] [role='group']:has(>[role='combobox']),[data-testid='stTextAreaRootElement'],[data-testid='stTextArea'] [data-baseweb='textarea'],[data-testid='stDateInput'] :has(>[data-testid='stDateInputField']),[data-testid='stTimeInput'] :has(>[data-testid='stTimeInputTimeDisplay']){border:1px solid var(--pnu-input-border)!important;box-shadow:0 0 0 2px var(--pnu-input-ring)!important;outline:none!important;transition:border-color .16s,box-shadow .16s,background-color .16s!important}
+[data-testid='stTextArea'] textarea,[data-testid='stSelectbox'] [role='combobox'],[data-testid='stDateInputField']{border:0!important;box-shadow:none!important;outline:none!important}
+:is([data-testid='stTextInput'],[data-testid='stNumberInput']) [data-baseweb='input'] [data-testid='stTextInputRootElement'],[data-testid='stSelectbox'] [data-baseweb='select'] [role='combobox']{border:0!important;box-shadow:none!important;outline:none!important}
+html[data-pnu-favorite-pending='true'] [data-testid='stStatusWidget']{visibility:hidden}
+html[data-pnu-favorite-pending='true'] [data-stale='true']{opacity:1!important}
+[data-testid='stDateInput'] :has(>[data-testid='stDateInputField']),[data-testid='stTimeInput'] :has(>[data-testid='stTimeInputTimeDisplay']){border-radius:8px}
+.st-key-registration_kind button{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease!important}
+.st-key-registration_kind button:first-of-type{color:#6cbaff!important;border-color:#2b78b7!important;background:#102536!important}
+.st-key-registration_kind button:last-of-type{color:#1ed760!important;border-color:#168e40!important;background:#102a1b!important}
+.st-key-registration_kind button:first-of-type:hover{background:#17466b!important;box-shadow:0 0 0 2px #329dff22;transform:translateY(-1px)}
+.st-key-registration_kind button:last-of-type:hover{background:#145630!important;box-shadow:0 0 0 2px #1ed76022;transform:translateY(-1px)}
+.st-key-registration_kind button:first-of-type[kind*='Active'],.st-key-registration_kind button:first-of-type[aria-pressed='true'],.st-key-registration_kind button:first-of-type[data-selected='true']{background:#329dff!important;border-color:#329dff!important;color:#071724!important}
+.st-key-registration_kind button:last-of-type[kind*='Active'],.st-key-registration_kind button:last-of-type[aria-pressed='true'],.st-key-registration_kind button:last-of-type[data-selected='true']{background:#1ed760!important;border-color:#1ed760!important;color:#06170c!important}
+@media(max-width:640px){.block-container{padding-top:2rem;padding-left:1rem;padding-right:1rem}.st-key-main_menu [role='radiogroup']{gap:.8rem}[class*='st-key-catalog_card_'] [data-testid='stImage'] img{height:220px!important}.catalog-title{min-height:0}}
+@media(prefers-reduced-motion:reduce){[class*='st-key-catalog_card_'],[class*='st-key-catalog_card_'] img,.st-key-registration_kind button{transition:none!important;transform:none!important}}

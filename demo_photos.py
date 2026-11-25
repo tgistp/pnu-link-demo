@@ -1,4 +1,5 @@
 """Attach clearly labelled generated demo photos without replacing real uploads."""
+
 import json
 import shutil
 import uuid
@@ -20,12 +21,20 @@ def install_demo_photos():
             source = (assets / item["file"]).resolve()
             if source.parent != assets.resolve() or not source.is_file():
                 continue
-            ids = [r[0] for r in con.execute("SELECT id FROM items WHERE title=? AND image=''", (item["title"],))]
+            ids = [
+                r[0]
+                for r in con.execute(
+                    "SELECT id FROM items WHERE title=? AND image=''", (item["title"],)
+                )
+            ]
             for iid in ids:
                 relative = f"images/{uuid.uuid4().hex}.jpg"
                 shutil.copyfile(source, core.DATA / relative)
                 try:
-                    changed = con.execute("UPDATE items SET image=?,is_demo_image=1 WHERE id=? AND image=''", (relative, iid)).rowcount
+                    changed = con.execute(
+                        "UPDATE items SET image=?,is_demo_image=1 WHERE id=? AND image=''",
+                        (relative, iid),
+                    ).rowcount
                 except Exception:
                     (core.DATA / relative).unlink(missing_ok=True)
                     raise
@@ -33,9 +42,11 @@ def install_demo_photos():
                     (core.DATA / relative).unlink(missing_ok=True)
                 count += changed
             if item.get("question"):
-                con.execute("""UPDATE items SET verification_question=? WHERE title=?
+                con.execute(
+                    """UPDATE items SET verification_question=? WHERE title=?
                     AND is_demo_image=1 AND verification_question='' AND private_hint<>''""",
-                    (item["question"], item["title"]))
+                    (item["question"], item["title"]),
+                )
     return count
 
 
